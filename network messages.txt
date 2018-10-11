@@ -9,7 +9,6 @@
 <btnc> ::= 6 <rgb> <rgb> <short> <rgb> ; glimmer minima, maxima, period, on-held
 
 
-
 <ping-payload> ::= <hw-type> <hostname> <uptime>
 <rgb-payload> ::= <rgb> | <rgb> <rgb-payload>
 <rgb> ::= <byte> <byte> <byte>

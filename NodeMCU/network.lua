@@ -30,13 +30,13 @@ local net_send_ident_message = function( msg, ip, port )
 	glim.socket:send( port, ip, string.char( msg, glim.HW_GLIM_V3, cfg.hostname:len() )..cfg.hostname )
 end
 
-local net_rgb1_output = function( args )
-	--net_print( "net_rgb1_output" )
+local net_recv_rgb1 = function( args )
+	--net_print( "net_recv_rgb1" )
 	rgb_set( args.payload:sub( 2 ), nil )
 end
 
-local net_rgb2_output = function( args )
-	net_print( "net_rgb2_output" )
+local net_recv_rgb2 = function( args )
+	net_print( "net_recv_rgb2" )
 	rgb_set( nil, args.payload:sub( 2 ) )
 end
 
@@ -46,8 +46,28 @@ local net_extract_pascal_string = function( payload, index )
 	return payload:sub( start, start + count )
 end
 
-local net_ping_recv = function( args )
-	net_print( "net_ping_recv" )
+local net_extract_short = function( payload, index )
+	local r = 0
+	r = r + ( payload:byte( index ) * 0x100 )
+	r = r + payload:byte( index + 1 )
+	return r
+end
+
+local net_extract_int = function( payload, index )
+	local r = 0
+	r = r + ( payload:byte( index ) * 0x1000000 )
+	r = r + ( payload:byte( index + 1 ) * 0x10000 )
+	r = r + ( payload:byte( index + 2 ) * 0x100 )
+	r = r + payload:byte( index + 3 )
+	return r
+end
+
+local net_extract_rgb = function( payload, index )
+	return string.char( payload:byte( index ), payload:byte( index + 1 ), payload:byte( index + 2 ) )
+end
+
+local net_recv_ping = function( args )
+	net_print( "net_recv_ping" )
 	-- only reply to servers, glims may send announcements that we don't care about (and we'll see our own broadcasts)
 	if glim.HW_SERVER == args.payload:byte( 2 ) then
 		net_print( "server ping request from "..net_extract_pascal_string( args.payload, 3 ).." ("..args.ip..":"..args.port..")" )
@@ -57,18 +77,33 @@ local net_ping_recv = function( args )
 	end
 end
 
-local net_pong_recv = function( args )
-	net_print( "net_pong_recv from "..net_extract_pascal_string( args.payload, 3 ).." ("..args.ip..":"..args.port..")" )
+local net_recv_pong = function( args )
+	net_print( "net_recv_pong from "..net_extract_pascal_string( args.payload, 3 ).." ("..args.ip..":"..args.port..")" )
 	-- probably a server responding to a ping broadcast, no use for it here
 	glim.server_ip = args.ip
 	glim.server_port = args.port
 end
 
+local net_recv_btnc = function( args )
+	if 12 ~= args.payload:len() then
+		net_print( "net_recv_btnc: malformed payload of "..args.payload:len().." bytes" )
+		return
+	end
+
+	net_print( "net_recv_btnc" )
+	local min = net_extract_rgb( args.payload, 2 )
+	local max = net_extract_rgb( args.payload, 5 )
+	local period = net_extract_short( args.payload, 8 )
+	local onheld = net_extract_rgb( args.payload, 10 )
+	glimmer_set( min, max, period, onheld )
+end
+
 local net_data_handler = {
-	[1] = net_rgb1_output,
-	[2] = net_rgb2_output,
-	[3] = net_ping_recv,
-	[4] = net_pong_recv,
+	[1] = net_recv_rgb1,
+	[2] = net_recv_rgb2,
+	[3] = net_recv_ping,
+	[4] = net_recv_pong,
+	[6] = net_recv_btnc,
 }
 
 local net_data_rcv = function( sck, data, port, ip )
