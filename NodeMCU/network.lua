@@ -20,7 +20,7 @@ local glim = {
 	HW_GLIM_V3 = 3,
 
 	socket = nil,
-	
+
 	server_ip = nil,
 	server_port = nil
 }
@@ -111,6 +111,13 @@ end
 net_send_button_state = function( state )
 	-- called by button trigger receiver
 	if nil ~= glim.socket and nil ~= glim.server_ip and glim.server_port ~= nil then
+		if "down" == state then
+			state = 1
+		elseif "held" == state then
+			state = 2
+		elseif "up" == state then
+			state = 3
+		end
 		glim.socket:send( glim.server_port, glim.server_ip, string.char( glim.MSG_BTNS, state ) )
 	end
 end

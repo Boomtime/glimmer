@@ -17,7 +17,7 @@
 <hostname> ::= <string>
 <uptime> ::= <int> ; seconds since start (~68 years before wrap)
 
-<btn-state> ::= 1 | 2 | 3 ; down, held, up respectively (held is currently sent every 100ms)
+<btn-state> ::= 1 | 2 | 3 ; down, held, up respectively (held is sent every 100ms)
 
 <server> ::= 1
 <glim-v2> ::= 2  ; 6 (2xRGB) open-collector high power outputs, use <rgb1> and <rgb2> as single pixel each
