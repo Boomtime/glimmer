@@ -16,8 +16,11 @@ local ls = {
 	rgb_onheld = 0,
 	period_ms = 0,
 	btn_held_state = 0,
-	btn_next_when = 0
+	btn_next_when = 0,
+	btn_trigger_waiting = false
 }
+
+local glimmer_btn_check_state -- = function()
 
 local glimmer_sawtooth_scalar = function( min, max )
 	local period_us = 1000 * ls.period_ms
@@ -35,7 +38,6 @@ local glimmer_sawtooth_scalar = function( min, max )
 end
 
 local glimmer_cb_lamp = function()
-
 	-- default is "held" brightness
 	local bright = ls.rgb_onheld
 
@@ -49,6 +51,7 @@ local glimmer_cb_lamp = function()
 	end
 
 	rgb_switch_set( bright )
+	glimmer_btn_check_state()
 end
 
 local glimmer_resume = function()
@@ -72,12 +75,13 @@ end
 local glimmer_cb_btn_held = function()
 	ls.btn_held_state = ls.btn_held_state + 1
 	-- check if button has been held too long ("cat on keyboard" detect)
-	if ls.btn_held_state * ls.BTN_HOLD_REPEAT_MS < ls.BTN_HOLD_MAX_MS then
+	--if ls.btn_held_state * ls.BTN_HOLD_REPEAT_MS < ls.BTN_HOLD_MAX_MS then
 		net_send_button_state( "held" )
-	else
-		dbg_print( "glimmer_cb_btn_held: cat on keyboard" )
-		glimmer_btn_trigger_up();
-	end
+		glimmer_btn_check_state()
+	--else
+	--	dbg_print( "glimmer_cb_btn_held: cat on keyboard" )
+	--	glimmer_btn_trigger_up();
+	--end
 end
 
 local glimmer_btn_trigger_down = function()
@@ -89,16 +93,34 @@ local glimmer_btn_trigger_down = function()
 		ls.timer:register( ls.BTN_HOLD_REPEAT_MS, tmr.ALARM_AUTO, glimmer_cb_btn_held )
 		ls.timer:start()
 	else
+		--[[
 		-- rising edge trigger might not have reached high enough to count as a HIGH level yet, re-sample it
 		if 0 ~= gpio.read( ls.BTN_PIN ) then
 			dbg_print( "glimmer_btn_trigger_down converting to up due to pin state" )
 			glimmer_btn_trigger_up()
 		end
+		]]
 	end
+end
+
+-- local, but predeclared now
+glimmer_btn_check_state = function()
+	if 0 == gpio.read( ls.BTN_PIN ) then
+		glimmer_btn_trigger_down()
+	else
+		glimmer_btn_trigger_up()
+	end
+	ls.btn_trigger_waiting = false
 end
 
 local glimmer_on_button_changed = function( level, when )
 	dbg_print( "glimmer_on_button_changed: level "..level.." when "..when )
+
+	if false == ls.btn_trigger_waiting then
+		ls.btn_trigger_waiting = true
+		node.task.post( node.task.MEDIUM_PRIORITY, glimmer_btn_check_state )
+	end
+--[[
 	if when < ls.btn_next_when then
 		dbg_print( "... de-bouncing" )
 		return
@@ -111,6 +133,7 @@ local glimmer_on_button_changed = function( level, when )
 		-- button is pressed
 		glimmer_btn_trigger_down()
 	end
+]]
 end
 
 glimmer_clear = function( rgb_value )
