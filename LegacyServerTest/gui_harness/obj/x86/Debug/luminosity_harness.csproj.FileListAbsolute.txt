@@ -1,8 +1,0 @@
-D:\code\NodeMCU\server_gui_test\gui_harness\bin\Debug\gui_harness.exe
-D:\code\NodeMCU\server_gui_test\gui_harness\bin\Debug\gui_harness.pdb
-D:\code\NodeMCU\server_gui_test\gui_harness\obj\x86\Debug\gui_harness.Main.resources
-D:\code\NodeMCU\server_gui_test\gui_harness\obj\x86\Debug\gui_harness.Properties.Resources.resources
-D:\code\NodeMCU\server_gui_test\gui_harness\obj\x86\Debug\luminosity_harness.csproj.GenerateResource.Cache
-D:\code\NodeMCU\server_gui_test\gui_harness\obj\x86\Debug\gui_harness.exe
-D:\code\NodeMCU\server_gui_test\gui_harness\obj\x86\Debug\gui_harness.pdb
-D:\code\NodeMCU\server_gui_test\gui_harness\obj\x86\Debug\luminosity_harness.csprojResolveAssemblyReference.cache
