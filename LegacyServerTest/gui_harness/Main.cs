@@ -12,6 +12,7 @@
 	using System.Windows.Controls;
 	using System.Collections.Generic;
 	using System.Linq;
+	using System.Diagnostics;
 
 	public partial class Main : Form
 	{
@@ -29,7 +30,8 @@
 		public enum OutputFunc {
 			Static,
 			Rainbow,
-			ChannelTest
+			ChannelTest,
+			PartyGame,
 		}
 
 		UdpClient skt;
@@ -61,16 +63,7 @@
 		{
 			skt = new UdpClient( GlimPort );
 
-			var tmr = new System.Windows.Forms.Timer();
-
-			tmr.Tick += DataTimer_Tick;
-			tmr.Interval = 100;
-			tmr.Start();
-		}
-
-		void DataTimer_Tick( object sender, EventArgs e )
-		{
-			CheckForReceived();
+			AsyncDatagramReceive();
 		}
 
 		void ColourCycling_Tick( object sender, EventArgs e )
@@ -146,6 +139,117 @@
 			return Encoding.ASCII.GetString( payload, index + 1, count );
 		}
 
+		void AsyncDatagramReceive() {
+			skt.BeginReceive( DataReceived, null );
+		}
+
+		void DataReceived( IAsyncResult ar ) {
+			var rhost = new IPEndPoint( IPAddress.Any, GlimPort );
+			byte[] dgram = skt.EndReceive( ar, ref rhost );
+
+			ProcessDatagram( rhost, dgram );
+
+			AsyncDatagramReceive();
+		}
+
+		void ProcessDatagram( IPEndPoint rhost, byte[] dgram ) {
+			PrintLine( "got some data from " + rhost.Address.ToString() );
+
+			var msg = (NetworkMessage)dgram[0];
+
+			switch( msg ) {
+				case NetworkMessage.Ping:
+				case NetworkMessage.Pong:
+					var hw = (HardwareType)dgram[1];
+					switch( hw ) {
+						case HardwareType.Server:
+							PrintLine( "ping/pong of server type (probably us)" );
+							break;
+						case HardwareType.GlimV2:
+						case HardwareType.GlimV3:
+							PrintLine( "ping/pong from a " + hw.ToString() );
+							var hostname = ExtractPascalString( dgram, 2 );
+							var pixelcount = Main.PixelCountPerString;
+							// @todo: hacky hacky hack hack
+							switch( hostname ) {
+								case "GlimSwarm-102":
+									pixelcount = 50;
+									break;
+								case "GlimSwarm-103":
+									pixelcount = 150;
+									break;
+								case "GlimSwarm-104":
+									pixelcount = 50;
+									break;
+							}
+							var glim = new GlimDescriptor( hostname, pixelcount ) { IPEndPoint = rhost };
+							PrintLine( ".. named " + glim.DeviceName );
+							if( !EndPoints.ContainsKey( glim.DeviceName ) ) {
+								PrintLine( "added to list" );
+								EndPoints.Add( glim.DeviceName, glim );
+
+								SafeCall( () => {
+									cGlimList.Items.Clear();
+									foreach( var g in EndPoints )
+										cGlimList.Items.Add( g.Value.DeviceName );
+								} );
+							}
+							// reply if appropriate
+							if( NetworkMessage.Ping == msg )
+								SendPong( rhost );
+							else
+								SendButtonGlimmer( glim );
+							break;
+						default:
+							PrintLine( "unknown type ping" );
+							break;
+					}
+					break;
+
+				case NetworkMessage.ButtonStatus: {
+						var down = false;
+						var state = (ButtonStatus)dgram[1];
+
+						down = ( state != ButtonStatus.Up );
+
+						if( down ) {
+							if( !ButtonHeld ) {
+								// find the device
+								foreach( var desc in EndPoints.Values ) {
+									if( desc.IPEndPoint.Equals( rhost ) ) {
+										PrintLine( string.Format( "button changed {0}", state ) );
+
+										ButtonHeld = true;
+										ButtonColor = Color.White;
+
+										switch( desc.DeviceName ) {
+											case "GlimSwarm-103":
+												ButtonColor = Color.Blue;
+												break;
+											case "GlimSwarm-104":
+												ButtonColor = Color.Red;
+												break;
+										}
+
+										break;
+									}
+								}
+							}
+						}
+						else {
+							ButtonHeld = false;
+						}
+					}
+					break;
+
+				default: {
+						PrintLine( string.Format( "mystery message ({0}) received (and ignored)", dgram[0] ) );
+					}
+					break;
+			}
+		}
+
+
 		private void CheckForReceived()
 		{
 			IPEndPoint rhost = null;
@@ -154,112 +258,7 @@
 			while( skt.Available > 0 )
 			{
 				dgram = skt.Receive( ref rhost );
-
-				PrintLine( "got some data from " + rhost.Address.ToString() );
-
-				var msg = (NetworkMessage)dgram[0];
-
-				switch( msg )
-				{
-					case NetworkMessage.Ping:
-					case NetworkMessage.Pong:
-						var hw = (HardwareType)dgram[1];
-						switch( hw )
-						{
-							case HardwareType.Server:
-								PrintLine( "ping/pong of server type (probably us)" );
-								break;
-							case HardwareType.GlimV2:
-							case HardwareType.GlimV3:
-								PrintLine( "ping/pong from a " + hw.ToString() );
-								var hostname = ExtractPascalString( dgram, 2 );
-								var pixelcount = Main.PixelCountPerString;
-								// @todo: hacky hacky hack hack
-								switch( hostname )
-								{
-									case "GlimSwarm-102":
-										pixelcount = 50;
-										break;
-									case "GlimSwarm-103":
-										pixelcount = 150;
-										break;
-									case "GlimSwarm-104":
-										pixelcount = 50;
-										break;
-								}
-								var glim = new GlimDescriptor( hostname, pixelcount ) { IPEndPoint = rhost };
-								PrintLine( ".. named " + glim.DeviceName );
-								if( !EndPoints.ContainsKey( glim.DeviceName ) )
-								{
-									PrintLine( "added to list" );
-									EndPoints.Add( glim.DeviceName, glim );
-
-									cGlimList.Items.Clear();
-
-									foreach( var g in EndPoints )
-										cGlimList.Items.Add( g.Value.DeviceName );
-								}
-								// reply if appropriate
-								if( NetworkMessage.Ping == msg )
-									SendPong( rhost );
-								else
-									SendButtonGlimmer( glim );
-								break;
-							default:
-								PrintLine( "unknown type ping" );
-								break;
-						}
-						break;
-
-					case NetworkMessage.ButtonStatus:
-						{
-							var down = false;
-							var state = (ButtonStatus)dgram[1];
-
-							down = ( state != ButtonStatus.Up );
-
-							if( down )
-							{
-								if( !ButtonHeld )
-								{
-									// find the device
-									foreach( var desc in EndPoints.Values )
-									{
-										if( desc.IPEndPoint.Equals( rhost ) )
-										{
-											PrintLine( string.Format( "button changed {0}", state ) );
-
-											ButtonHeld = true;
-											ButtonColor = Color.White;
-
-											switch( desc.DeviceName )
-											{
-												case "GlimSwarm-103":
-													ButtonColor = Color.Blue;
-													break;
-												case "GlimSwarm-104":
-													ButtonColor = Color.Red;
-													break;
-											}
-
-											break;
-										}
-									}
-								}
-							}
-							else
-							{
-								ButtonHeld = false;
-							}
-						}
-						break;
-
-					default:
-						{
-							PrintLine( string.Format( "mystery message ({0}) received (and ignored)", dgram[0] ) );
-						}
-						break;
-				}
+				ProcessDatagram( rhost, dgram );
 			}
 		}
 
@@ -406,9 +405,26 @@
 			}
 		}
 
+		delegate void SafeCallDelegate();
+
+		void SafeCall( SafeCallDelegate func ) {
+			if( InvokeRequired ) {
+				try {
+					Invoke( func );
+				}
+				catch( Exception ex ) {
+					Debug.WriteLine( "*** EXCEPTION:" );
+					Debug.WriteLine( ex.ToString() );
+				}
+			}
+			else {
+				func();
+			}
+		}
+
 		void PrintLine( string msg )
 		{
-			ctl_debug.AppendText( msg + "\r\n" );
+			SafeCall( () => ctl_debug.AppendText( msg + "\r\n" ) );
 		}
 
 		private void ctl_funcCheckChanged( object sender, EventArgs e )

@@ -16,6 +16,11 @@
 		int PixelCount { get; }
 	}
 
+	enum ColorOrder {
+		RGB, // WS2812 (Glim orders the output modulator for this goal)
+		GBR, // WS2811 (bizarro world)
+	}
+
 	interface IGlimPacket : IEnumerable<ColorReal> {
 		
 		/// <summary>device that will receive this packet</summary>

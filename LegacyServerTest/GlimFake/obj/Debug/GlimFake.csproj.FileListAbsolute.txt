@@ -1,0 +1,6 @@
+D:\code\Glimmer\LegacyServerTest\GlimFake\bin\Debug\GlimFake.exe.config
+D:\code\Glimmer\LegacyServerTest\GlimFake\bin\Debug\GlimFake.exe
+D:\code\Glimmer\LegacyServerTest\GlimFake\bin\Debug\GlimFake.pdb
+D:\code\Glimmer\LegacyServerTest\GlimFake\obj\Debug\GlimFake.csprojResolveAssemblyReference.cache
+D:\code\Glimmer\LegacyServerTest\GlimFake\obj\Debug\GlimFake.exe
+D:\code\Glimmer\LegacyServerTest\GlimFake\obj\Debug\GlimFake.pdb

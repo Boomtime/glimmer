@@ -198,5 +198,12 @@
 			Color color = this;
 			return new byte[] { color.R, color.G, color.B };
 		}
+
+		/// <summary>give the RGB equivalent as 3 byte vector</summary>
+		/// <returns></returns>
+		public byte[] ToGBRArray() {
+			Color color = this;
+			return new byte[] { color.R, color.G, color.B };
+		}
 	}
 }

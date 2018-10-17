@@ -3,3 +3,5 @@ D:\code\NodeMCU\server_gui_test\server_gui_test\bin\Debug\server_gui_test.pdb
 D:\code\NodeMCU\server_gui_test\server_gui_test\obj\x86\Debug\server_gui_test.exe
 D:\code\NodeMCU\server_gui_test\server_gui_test\obj\x86\Debug\server_gui_test.pdb
 D:\code\NodeMCU\server_gui_test\server_gui_test\obj\x86\Debug\server_gui_test.csprojResolveAssemblyReference.cache
+D:\code\Glimmer\LegacyServerTest\server_gui_test\obj\x86\Debug\server_gui_test.exe
+D:\code\Glimmer\LegacyServerTest\server_gui_test\obj\x86\Debug\server_gui_test.pdb
