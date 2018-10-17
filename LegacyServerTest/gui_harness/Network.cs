@@ -4,6 +4,7 @@
 	using System.Net.Sockets;
 	using System.Collections.Generic;
 	using System.Text;
+	using System.Diagnostics;
 
 	/// <summary>top-level network message identifier</summary>
 	public enum NetworkMessage : byte {
@@ -29,15 +30,34 @@
 		Up = 3,
 	}
 
+	class NetworkEventArgs : EventArgs {
+		public IPEndPoint IPEndPoint { get; set; }
+	}
+
+	/// <summary>gives paramters to ping/pong events</summary>
+	class NetworkPingEventArgs : NetworkEventArgs {
+		public HardwareType HardwareType { get; set; }
+		public string Hostname { get; set; }
+		public TimeSpan Uptime { get; set; }
+	}
+
+	class NetworkButtonStatusEventArgs : NetworkEventArgs{
+		public ButtonStatus ButtonStatus { get; set; }
+	}
+
 	class NetworkServer {
 
 		public const int DefaultPort = 1998;
 
 		UdpClient mSocket;
-		DateTime mStartDatetime;
+		bool mAsyncReceiveEnabled;
+		readonly DateTime mStartDatetime;
 
 		public NetworkServer( int port = DefaultPort ) {
-			mSocket = new UdpClient( port );
+			mSocket = new UdpClient( port ) {
+				EnableBroadcast = true
+			};
+			mAsyncReceiveEnabled = false;
 			mStartDatetime = DateTime.Now;
 		}
 
@@ -56,6 +76,104 @@
 			result.Add( (byte)( uptime & 0xFF ) );
 
 			return result.ToArray();
+		}
+
+		public void Listen() {
+			if( !mAsyncReceiveEnabled ) {
+				AsyncDatagramReceive();
+				mAsyncReceiveEnabled = true;
+			}
+		}
+
+		void DataReceived( IAsyncResult ar ) {
+			var rhost = new IPEndPoint( IPAddress.Any, 0 );
+			byte[] dgram = mSocket.EndReceive( ar, ref rhost );
+
+			ProcessDatagram( rhost, dgram );
+
+			AsyncDatagramReceive();
+		}
+
+		void AsyncDatagramReceive() {
+			mSocket.BeginReceive( DataReceived, null );
+		}
+
+		string ExtractPascalString( byte[] payload, int index, out int strend ) {
+			int count = payload[index];
+
+			strend = index + count + 1;
+
+			if( count > payload.Length - index )
+				return null;
+
+			return Encoding.ASCII.GetString( payload, index + 1, count );
+		}
+
+		int ExtractInteger( byte[] dgram, int index ) {
+			int ret;
+			ret = dgram[index] << 24;
+			ret += dgram[index + 1] << 16;
+			ret += dgram[index + 2] << 8;
+			ret += dgram[index + 3];
+			return ret;
+		}
+
+		/// <summary>called whenever a ping message is received</summary>
+		public event EventHandler<NetworkPingEventArgs> PingReceived;
+
+		protected virtual void OnPingReceived( NetworkPingEventArgs e ) {
+			PingReceived?.Invoke( this, e );
+		}
+
+		/// <summary>called whenever a ping message is received</summary>
+		public event EventHandler<NetworkPingEventArgs> PongReceived;
+
+		protected virtual void OnPongReceived( NetworkPingEventArgs e ) {
+			PongReceived?.Invoke( this, e );
+		}
+
+		/// <summary>called whenever a button status message is received</summary>
+		public event EventHandler<NetworkButtonStatusEventArgs> ButtonStatusReceived;
+
+		protected virtual void OnButtonStatusReceived( NetworkButtonStatusEventArgs e ) {
+			ButtonStatusReceived?.Invoke( this, e );
+		}
+
+		void ProcessDatagram( IPEndPoint rhost, byte[] dgram ) {
+			Debug.WriteLine( "got some data from " + rhost.Address.ToString() );
+
+			var msg = (NetworkMessage)dgram[0];
+
+			switch( msg ) {
+				case NetworkMessage.Ping:
+				case NetworkMessage.Pong: {
+					var args = new NetworkPingEventArgs {
+						IPEndPoint = rhost,
+						HardwareType = (HardwareType)dgram[1],
+						Hostname = ExtractPascalString( dgram, 2, out int strend ),
+						Uptime = TimeSpan.FromSeconds( ExtractInteger( dgram, strend ) )
+					};
+					if( NetworkMessage.Ping == msg )
+						OnPingReceived( args );
+					else
+						OnPongReceived( args );
+				}
+				break;
+
+				case NetworkMessage.ButtonStatus: {
+					OnButtonStatusReceived(
+						new NetworkButtonStatusEventArgs {
+							IPEndPoint = rhost,
+							ButtonStatus = (ButtonStatus)dgram[1]
+					} );
+				}
+				break;
+
+				default: {
+					Debug.WriteLine( string.Format( "mystery message ({0}) received (and ignored)", dgram[0] ) );
+				}
+				break;
+			}
 		}
 
 		public void SendPing( IPEndPoint dst ) {

@@ -2,16 +2,10 @@
 {
 	using ShadowCreatures.Glimmer;
 	using System;
-	using System.Data;
 	using System.Drawing;
-	using System.Text;
 	using System.Windows.Forms;
 	using System.Net;
-	using System.Net.Sockets;
-	using System.Threading;
-	using System.Windows.Controls;
 	using System.Collections.Generic;
-	using System.Linq;
 	using System.Diagnostics;
 
 	public partial class Main : Form
@@ -34,7 +28,7 @@
 			PartyGame,
 		}
 
-		UdpClient skt;
+		NetworkServer mNetwork;
 		Dictionary<string, GlimDescriptor> EndPoints = new Dictionary<string,GlimDescriptor>();
 		System.Windows.Forms.Timer CyclingTimer = new System.Windows.Forms.Timer();
 		ColorReal CyclingColor = new ColorReal( Color.Red );
@@ -61,9 +55,11 @@
 
 		void Main_Load( object sender, EventArgs e )
 		{
-			skt = new UdpClient( GlimPort );
-
-			AsyncDatagramReceive();
+			mNetwork = new NetworkServer();
+			mNetwork.PingReceived += NetworkPingReceived;
+			mNetwork.PongReceived += NetworkPongReceived;
+			mNetwork.ButtonStatusReceived += NetworkButtonStatusReceived;
+			mNetwork.Listen();
 		}
 
 		void ColourCycling_Tick( object sender, EventArgs e )
@@ -81,8 +77,8 @@
 					map[p] = ButtonColor;
 
 				// transmit all packets
-				foreach( var ep in EndPoints )
-					ep.Value.Transmit( skt );
+				foreach( var g in EndPoints.Values )
+					mNetwork.SendRGB( g.IPEndPoint, g.GetPacketData( 0 ) );
 
 				return;
 			}
@@ -119,178 +115,103 @@
 			}
 		}
 
-		private void ColourResend_Click( object sender, EventArgs e )
-		{
+		private void ColourResend_Click( object sender, EventArgs e ) {
 			SendColour( NetworkMessage.RGB1, cColourSelected.BackColor );
 		}
 
-		private void Hunt_Click( object sender, EventArgs e )
-		{
+		private void Hunt_Click( object sender, EventArgs e ) {
 			SendPing();
 		}
 
-		string ExtractPascalString( byte[] payload, int index )
-		{
-			int count = payload[index];
-
-			if( count > payload.Length - index )
-				return null;
-
-			return Encoding.ASCII.GetString( payload, index + 1, count );
-		}
-
-		void AsyncDatagramReceive() {
-			skt.BeginReceive( DataReceived, null );
-		}
-
-		void DataReceived( IAsyncResult ar ) {
-			var rhost = new IPEndPoint( IPAddress.Any, GlimPort );
-			byte[] dgram = skt.EndReceive( ar, ref rhost );
-
-			ProcessDatagram( rhost, dgram );
-
-			AsyncDatagramReceive();
-		}
-
-		void ProcessDatagram( IPEndPoint rhost, byte[] dgram ) {
-			PrintLine( "got some data from " + rhost.Address.ToString() );
-
-			var msg = (NetworkMessage)dgram[0];
-
-			switch( msg ) {
-				case NetworkMessage.Ping:
-				case NetworkMessage.Pong:
-					var hw = (HardwareType)dgram[1];
-					switch( hw ) {
-						case HardwareType.Server:
-							PrintLine( "ping/pong of server type (probably us)" );
-							break;
-						case HardwareType.GlimV2:
-						case HardwareType.GlimV3:
-							PrintLine( "ping/pong from a " + hw.ToString() );
-							var hostname = ExtractPascalString( dgram, 2 );
-							var pixelcount = Main.PixelCountPerString;
-							// @todo: hacky hacky hack hack
-							switch( hostname ) {
-								case "GlimSwarm-102":
-									pixelcount = 50;
-									break;
-								case "GlimSwarm-103":
-									pixelcount = 150;
-									break;
-								case "GlimSwarm-104":
-									pixelcount = 50;
-									break;
-							}
-							var glim = new GlimDescriptor( hostname, pixelcount ) { IPEndPoint = rhost };
-							PrintLine( ".. named " + glim.DeviceName );
-							if( !EndPoints.ContainsKey( glim.DeviceName ) ) {
-								PrintLine( "added to list" );
-								EndPoints.Add( glim.DeviceName, glim );
-
-								SafeCall( () => {
-									cGlimList.Items.Clear();
-									foreach( var g in EndPoints )
-										cGlimList.Items.Add( g.Value.DeviceName );
-								} );
-							}
-							// reply if appropriate
-							if( NetworkMessage.Ping == msg )
-								SendPong( rhost );
-							else
-								SendButtonGlimmer( glim );
-							break;
-						default:
-							PrintLine( "unknown type ping" );
-							break;
-					}
+		void ProcessPingPong( NetworkMessage msg, NetworkPingEventArgs e ) {
+			switch( e.HardwareType ) {
+				case HardwareType.Server:
+					PrintLine( "ping/pong of server type (probably us)" );
 					break;
-
-				case NetworkMessage.ButtonStatus: {
-						var down = false;
-						var state = (ButtonStatus)dgram[1];
-
-						down = ( state != ButtonStatus.Up );
-
-						if( down ) {
-							if( !ButtonHeld ) {
-								// find the device
-								foreach( var desc in EndPoints.Values ) {
-									if( desc.IPEndPoint.Equals( rhost ) ) {
-										PrintLine( string.Format( "button changed {0}", state ) );
-
-										ButtonHeld = true;
-										ButtonColor = Color.White;
-
-										switch( desc.DeviceName ) {
-											case "GlimSwarm-103":
-												ButtonColor = Color.Blue;
-												break;
-											case "GlimSwarm-104":
-												ButtonColor = Color.Red;
-												break;
-										}
-
-										break;
-									}
-								}
-							}
-						}
-						else {
-							ButtonHeld = false;
-						}
+				case HardwareType.GlimV2:
+				case HardwareType.GlimV3:
+					PrintLine( "ping/pong from a " + e.HardwareType.ToString() );
+					var pixelcount = Main.PixelCountPerString;
+					// @todo: hacky hacky hack hack
+					switch( e.Hostname ) {
+						case "GlimSwarm-102":
+							pixelcount = 50;
+							break;
+						case "GlimSwarm-103":
+							pixelcount = 150;
+							break;
+						case "GlimSwarm-104":
+							pixelcount = 50;
+							break;
 					}
+					var glim = new GlimDescriptor( e.Hostname, pixelcount ) { IPEndPoint = e.IPEndPoint };
+					PrintLine( ".. named " + glim.DeviceName );
+					if( !EndPoints.ContainsKey( glim.DeviceName ) ) {
+						PrintLine( "added to list" );
+						EndPoints.Add( glim.DeviceName, glim );
+						SafeCall( () => {
+							cGlimList.Items.Clear();
+							foreach( var g in EndPoints )
+								cGlimList.Items.Add( g.Value.DeviceName );
+						} );
+					}
+					// reply if appropriate
+					if( NetworkMessage.Ping == msg )
+						SendPong( e.IPEndPoint );
+					else
+						SendButtonGlimmer( glim );
 					break;
-
-				default: {
-						PrintLine( string.Format( "mystery message ({0}) received (and ignored)", dgram[0] ) );
-					}
+				default:
+					PrintLine( "unknown type ping" );
 					break;
 			}
 		}
 
-
-		private void CheckForReceived()
-		{
-			IPEndPoint rhost = null;
-			byte[] dgram;
-
-			while( skt.Available > 0 )
-			{
-				dgram = skt.Receive( ref rhost );
-				ProcessDatagram( rhost, dgram );
-			}
+		void NetworkPingReceived( object sender, NetworkPingEventArgs e ) {
+			ProcessPingPong( NetworkMessage.Ping, e );
 		}
 
-		byte[] ConstructPing( bool ping )
-		{
-			var result = new List<byte>();
-			string hostname = System.Environment.MachineName;
+		void NetworkPongReceived( object sender, NetworkPingEventArgs e ) {
+			ProcessPingPong( NetworkMessage.Pong, e );
+		}
 
-			result.Add( (byte)( ping ? NetworkMessage.Ping : NetworkMessage.Pong ) );
-			result.Add( (byte)( HardwareType.Server ) );
-			result.Add( (byte)( hostname.Length ) );
-			result.AddRange( Encoding.ASCII.GetBytes( hostname ) );
-
-			return result.ToArray();
+		void NetworkButtonStatusReceived( object sender, NetworkButtonStatusEventArgs e ) {
+			if( ButtonStatus.Up == e.ButtonStatus ) {
+				ButtonHeld = false;
+			}
+			else
+			if( !ButtonHeld ) {
+				// find the device
+				foreach( var desc in EndPoints.Values ) {
+					if( desc.IPEndPoint.Equals( e.IPEndPoint ) ) {
+						PrintLine( string.Format( "button changed {0}", e.ButtonStatus ) );
+						ButtonHeld = true;
+						ButtonColor = Color.White;
+						switch( desc.DeviceName ) {
+							case "GlimSwarm-103":
+								ButtonColor = Color.Blue;
+								break;
+							case "GlimSwarm-104":
+								ButtonColor = Color.Red;
+								break;
+						}
+						break;
+					}
+				}
+			}
 		}
 
 		/// <summary>broadcast a ping, or direct to a specific glim if desired</summary>
-		void SendPing( IPEndPoint ip = null )
-		{
+		void SendPing( IPEndPoint ip = null ) {
 			if( null == ip )
 				ip = new IPEndPoint( new IPAddress( 0xffffffff ), GlimPort );
-
+			mNetwork.SendPing( ip );
 			PrintLine( "sent ping" );
-
-			byte[] dgram = ConstructPing( true );
-			skt.Send( dgram, dgram.Length, ip );
 		}
 
-		void SendPong( IPEndPoint ip )
-		{
-			byte[] dgram = ConstructPing( false );
-			skt.Send( dgram, dgram.Length, ip );
+		void SendPong( IPEndPoint ip ) {
+			Debug.Assert( null != ip, "must have an IP to answer a ping" );
+			mNetwork.SendPong( ip );
 		}
 
 		double LuminanceMultiplier
@@ -337,46 +258,37 @@
 			GenerateVectorColourWheel( map, start );
 
 			// transmit all packets
-			foreach( var ep in EndPoints )
-				ep.Value.Transmit( skt );
+			foreach( var g in EndPoints.Values )
+				mNetwork.SendRGB( g.IPEndPoint, g.GetPacketData( 0 ) );
 		}
 
 		void SendButtonGlimmer( GlimDescriptor glim )
 		{
-			var sb = new List<byte>();
-			ColorReal clr;
+			ColorReal min;
+			ColorReal max;
+			ColorReal onHeld;
 
 			switch( glim.DeviceName )
 			{
-			case "GlimSwarm-103":
-				clr = Color.Blue;
-				break;
-			case "GlimSwarm-104":
-				clr = Color.Red;
-				break;
-			default:
-				return;
+				case "GlimSwarm-103":
+					min = Color.Blue;
+					max = Color.Blue;
+					onHeld = Color.Blue;
+					break;
+				case "GlimSwarm-104":
+					min = Color.Red;
+					max = Color.Red;
+					onHeld = Color.Red;
+					break;
+				default:
+					return;
 			}
 
-			sb.Add( (byte)NetworkMessage.ButtonColor );
+			min.Luminance = 0.1;
+			max.Luminance = 0.3;
+			onHeld.Luminance = 0.55;
 
-			// low
-			clr.Luminance = 0.1;
-			sb.AddRange( clr.ToRGBArray() );
-
-			// high
-			clr.Luminance = 0.3;
-			sb.AddRange( clr.ToRGBArray() );
-
-			// period (1024ms)
-			sb.Add( 4 );
-			sb.Add( 0 );
-
-			// on-held
-			clr.Luminance = 0.6;
-			sb.AddRange( clr.ToRGBArray() );
-
-			skt.Send( sb.ToArray(), sb.Count, glim.IPEndPoint );
+			mNetwork.SendButtonColor( glim.IPEndPoint, min, max, 1024, onHeld );
 		}
 
 		void GenerateVectorColourWheel( IGlimPixelMap map, Color start )
@@ -400,7 +312,7 @@
 				var pkt = glim.GetPacketData( 0 );
 				for( int p = 0 ; p < pkt.Device.PixelCount ; p++ )
 					pkt[p] = clr;
-				glim.Transmit( skt );
+				mNetwork.SendRGB( glim.IPEndPoint, pkt );
 				break;
 			}
 		}
