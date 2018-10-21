@@ -6,6 +6,12 @@
 	using System.Text;
 	using System.Diagnostics;
 
+	/// <summary>order of colour triples</summary>
+	public enum NetworkColorOrder {
+		RGB, // WS2812 (Glim orders the output modulator for this goal)
+		GBR, // WS2811 (bizarro world)
+	}
+
 	/// <summary>top-level network message identifier</summary>
 	public enum NetworkMessage : byte {
 		RGB1 = 1,
@@ -30,19 +36,31 @@
 		Up = 3,
 	}
 
+	/// <summary>base class for all event args from the server, always have a IPEndPoint SourceAddress</summary>
 	class NetworkEventArgs : EventArgs {
-		public IPEndPoint IPEndPoint { get; set; }
+		protected NetworkEventArgs( IPEndPoint source ){
+			SourceAddress = source;
+		}
+		public readonly IPEndPoint SourceAddress;
 	}
 
 	/// <summary>gives paramters to ping/pong events</summary>
 	class NetworkPingEventArgs : NetworkEventArgs {
-		public HardwareType HardwareType { get; set; }
-		public string Hostname { get; set; }
-		public TimeSpan Uptime { get; set; }
+		public NetworkPingEventArgs( IPEndPoint source, HardwareType hw, string hostname, TimeSpan uptime ) : base( source ) {
+			HardwareType = hw;
+			Hostname = hostname;
+			Uptime = uptime;
+		}
+		public readonly HardwareType HardwareType;
+		public readonly string Hostname;
+		public readonly TimeSpan Uptime;
 	}
 
-	class NetworkButtonStatusEventArgs : NetworkEventArgs{
-		public ButtonStatus ButtonStatus { get; set; }
+	class NetworkButtonStatusEventArgs : NetworkEventArgs {
+		public NetworkButtonStatusEventArgs( IPEndPoint source, ButtonStatus status ) : base( source ) {
+			ButtonStatus = status;
+		}
+		public readonly ButtonStatus ButtonStatus;
 	}
 
 	class NetworkServer {
@@ -111,6 +129,10 @@
 
 		int ExtractInteger( byte[] dgram, int index ) {
 			int ret;
+
+			if( dgram.Length < index + 4 )
+				return 0;
+
 			ret = dgram[index] << 24;
 			ret += dgram[index + 1] << 16;
 			ret += dgram[index + 2] << 8;
@@ -147,12 +169,9 @@
 			switch( msg ) {
 				case NetworkMessage.Ping:
 				case NetworkMessage.Pong: {
-					var args = new NetworkPingEventArgs {
-						IPEndPoint = rhost,
-						HardwareType = (HardwareType)dgram[1],
-						Hostname = ExtractPascalString( dgram, 2, out int strend ),
-						Uptime = TimeSpan.FromSeconds( ExtractInteger( dgram, strend ) )
-					};
+					var args = new NetworkPingEventArgs( rhost, (HardwareType)dgram[1],
+						ExtractPascalString( dgram, 2, out int strend ),
+						TimeSpan.FromSeconds( ExtractInteger( dgram, strend ) ) );
 					if( NetworkMessage.Ping == msg )
 						OnPingReceived( args );
 					else
@@ -161,11 +180,7 @@
 				break;
 
 				case NetworkMessage.ButtonStatus: {
-					OnButtonStatusReceived(
-						new NetworkButtonStatusEventArgs {
-							IPEndPoint = rhost,
-							ButtonStatus = (ButtonStatus)dgram[1]
-					} );
+						OnButtonStatusReceived( new NetworkButtonStatusEventArgs( rhost, (ButtonStatus)dgram[1] ) );
 				}
 				break;
 
@@ -186,10 +201,10 @@
 			mSocket.Send( ping, ping.Length, dst );
 		}
 
-		public void SendRGB( IPEndPoint dst, IEnumerable<ColorReal> vector, ColorOrder order = ColorOrder.RGB ) {
+		public void SendRGB( IPEndPoint dst, IEnumerable<ColorReal> vector, NetworkColorOrder order = NetworkColorOrder.RGB ) {
 			var dgram = new List<byte>();
 			dgram.Add( (byte)NetworkMessage.RGB1 );
-			if( ColorOrder.GBR == order ) {
+			if( NetworkColorOrder.GBR == order ) {
 				foreach( var c in vector )
 					dgram.AddRange( c.ToGBRArray() );
 			}
@@ -200,12 +215,12 @@
 			mSocket.Send( dgram.ToArray(), dgram.Count, dst );
 		}
 
-		public void SendButtonColor( IPEndPoint dst, ColorReal min, ColorReal max, short period, ColorReal onHeld, ColorOrder order = ColorOrder.RGB ) {
+		public void SendButtonColor( IPEndPoint dst, ColorReal min, ColorReal max, short period, ColorReal onHeld, NetworkColorOrder order = NetworkColorOrder.RGB ) {
 			var dgram = new List<byte>();
 			dgram.Add( (byte)NetworkMessage.ButtonColor );
 
 			// low/high
-			if( ColorOrder.GBR == order ) {
+			if( NetworkColorOrder.GBR == order ) {
 				dgram.AddRange( min.ToGBRArray() );
 				dgram.AddRange( max.ToGBRArray() );
 			}
@@ -219,44 +234,12 @@
 			dgram.Add( (byte)( period & 0xFF ) );
 
 			// on-held
-			if( ColorOrder.GBR == order )
+			if( NetworkColorOrder.GBR == order )
 				dgram.AddRange( onHeld.ToGBRArray() );
 			else
 				dgram.AddRange( onHeld.ToRGBArray() );
 
 			mSocket.Send( dgram.ToArray(), dgram.Count, dst );
 		}
-		/*
-
-<packet> ::= <rgb1> | <rgb2> | <ping> | <pong> | <btns> | <btnc>
-
-<rgb1> ::= 1 <rgb-payload>
-<rgb2> ::= 2 <rgb-payload>
-<ping> ::= 3 <ping-payload>
-<pong> ::= 4 <ping-payload>
-<btns> ::= 5 <btn-state>
-<btnc> ::= 6 <rgb> <rgb> <short> <rgb> ; glimmer minima, maxima, period, on-held
-
-
-<ping-payload> ::= <hw-type> <hostname> <uptime>
-<rgb-payload> ::= <rgb> | <rgb> <rgb-payload>
-<rgb> ::= <byte> <byte> <byte>
-<hw-type> ::= <server> | <glim-v2> | <glim-v3>
-<hostname> ::= <string>
-<uptime> ::= <int> ; seconds since start (~68 years before wrap)
-
-<btn-state> ::= 1 | 2 | 3 ; down, held, up respectively (held is sent every 100ms)
-
-<server> ::= 1
-<glim-v2> ::= 2  ; 6 (2xRGB) open-collector high power outputs, use <rgb1> and <rgb2> as single pixel each
-<glim-v3> ::= 3  ; 2 strings of WS2812 (if WS2811 is used, send the triplets as GBR), RGB1 and RGB2 outputs are each a vector of pixels
-
-<byte> ::= 0-255
-<int> ::= <byte> <byte> <byte> <byte> ; int (signed) big endian
-<short> ::= <byte> <byte> ; short (signed) big endian
-<string> ::= 0 | <strlen> <char-vector>
-<strlen> ::= <byte>
-<char-vector> ::= <char> | <char> <char-vector>
-		 */
 	}
 }

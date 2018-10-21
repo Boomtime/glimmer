@@ -127,7 +127,7 @@ net_on_connect = function()
 	glim.socket:listen( glim.PORT )
 	glim.socket:on( "receive", net_data_rcv )
 
-	if glim.ANOUNCE then
+	if glim.ANNOUNCE then
 		net_print( "announcing" )
 		net_send_ident_message( glim.MSG_PING, "255.255.255.255", cfg.net.port )
 	end

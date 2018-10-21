@@ -59,7 +59,7 @@
 		{
 			if( 0 == Luminance )
 			{
-				r = g = b = 1.0;
+				r = g = b = 0.0;
 				return;
 			}
 

@@ -59,7 +59,7 @@
 		{
 			if( 0 == Luminance )
 			{
-				r = g = b = 1.0;
+				r = g = b = 0.0;
 				return;
 			}
 
@@ -115,6 +115,13 @@
 			r = ClampToUnity( r + m );
 			g = ClampToUnity( g + m );
 			b = ClampToUnity( b + m );
+		}
+
+		/// <summary>make two colors be equal</summary>
+		public void CopyFrom( ColorReal rc ) {
+			Hue = rc.Hue;
+			Saturation = rc.Saturation;
+			Luminance = rc.Luminance;
 		}
 
 		/// <summary>converts the HSL colour to RGB Color structure</summary>

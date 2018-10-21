@@ -33,25 +33,29 @@
 			this.cGlimList = new System.Windows.Forms.ListView();
 			this.cHunt = new System.Windows.Forms.Button();
 			this.flowLayoutPanel2 = new System.Windows.Forms.FlowLayoutPanel();
-			this.ctl_hue = new System.Windows.Forms.TrackBar();
-			this.ctl_lum = new System.Windows.Forms.TrackBar();
-			this.ctl_sat = new System.Windows.Forms.TrackBar();
+			this.cStarlightLum = new System.Windows.Forms.TrackBar();
+			this.cLuminance = new System.Windows.Forms.TrackBar();
+			this.cSaturation = new System.Windows.Forms.TrackBar();
 			this.ctl_debug = new System.Windows.Forms.TextBox();
 			this.flowLayoutPanel3 = new System.Windows.Forms.FlowLayoutPanel();
 			this.cColourPick = new System.Windows.Forms.Button();
 			this.cColourSelected = new System.Windows.Forms.Label();
 			this.cColourSetAll = new System.Windows.Forms.Button();
 			this.groupBox1 = new System.Windows.Forms.GroupBox();
+			this.cFuncPartyNoGame = new System.Windows.Forms.RadioButton();
+			this.cFuncPartyGame = new System.Windows.Forms.RadioButton();
 			this.cFuncChannelTest = new System.Windows.Forms.RadioButton();
 			this.cFuncStatic = new System.Windows.Forms.RadioButton();
 			this.cFuncRainbow = new System.Windows.Forms.RadioButton();
+			this.cPartyDebugShot = new System.Windows.Forms.Button();
 			this.ctl_status = new System.Windows.Forms.StatusStrip();
+			this.cAutoHunt = new System.Windows.Forms.CheckBox();
 			this.tableLayoutPanel1.SuspendLayout();
 			this.flowLayoutPanel1.SuspendLayout();
 			this.flowLayoutPanel2.SuspendLayout();
-			((System.ComponentModel.ISupportInitialize)(this.ctl_hue)).BeginInit();
-			((System.ComponentModel.ISupportInitialize)(this.ctl_lum)).BeginInit();
-			((System.ComponentModel.ISupportInitialize)(this.ctl_sat)).BeginInit();
+			((System.ComponentModel.ISupportInitialize)(this.cStarlightLum)).BeginInit();
+			((System.ComponentModel.ISupportInitialize)(this.cLuminance)).BeginInit();
+			((System.ComponentModel.ISupportInitialize)(this.cSaturation)).BeginInit();
 			this.flowLayoutPanel3.SuspendLayout();
 			this.groupBox1.SuspendLayout();
 			this.SuspendLayout();
@@ -82,6 +86,7 @@
 			// 
 			this.flowLayoutPanel1.Controls.Add(this.cGlimList);
 			this.flowLayoutPanel1.Controls.Add(this.cHunt);
+			this.flowLayoutPanel1.Controls.Add(this.cAutoHunt);
 			this.flowLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.flowLayoutPanel1.Location = new System.Drawing.Point(4, 5);
 			this.flowLayoutPanel1.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
@@ -113,9 +118,9 @@
 			// 
 			// flowLayoutPanel2
 			// 
-			this.flowLayoutPanel2.Controls.Add(this.ctl_hue);
-			this.flowLayoutPanel2.Controls.Add(this.ctl_lum);
-			this.flowLayoutPanel2.Controls.Add(this.ctl_sat);
+			this.flowLayoutPanel2.Controls.Add(this.cStarlightLum);
+			this.flowLayoutPanel2.Controls.Add(this.cLuminance);
+			this.flowLayoutPanel2.Controls.Add(this.cSaturation);
 			this.flowLayoutPanel2.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.flowLayoutPanel2.Location = new System.Drawing.Point(4, 370);
 			this.flowLayoutPanel2.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
@@ -123,40 +128,41 @@
 			this.flowLayoutPanel2.Size = new System.Drawing.Size(433, 355);
 			this.flowLayoutPanel2.TabIndex = 3;
 			// 
-			// ctl_hue
+			// cStarlightLum
 			// 
-			this.ctl_hue.Location = new System.Drawing.Point(4, 5);
-			this.ctl_hue.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-			this.ctl_hue.Maximum = 1000;
-			this.ctl_hue.Name = "ctl_hue";
-			this.ctl_hue.Orientation = System.Windows.Forms.Orientation.Vertical;
-			this.ctl_hue.Size = new System.Drawing.Size(90, 336);
-			this.ctl_hue.TabIndex = 3;
-			this.ctl_hue.TickFrequency = 100;
+			this.cStarlightLum.Location = new System.Drawing.Point(4, 5);
+			this.cStarlightLum.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+			this.cStarlightLum.Maximum = 1000;
+			this.cStarlightLum.Name = "cStarlightLum";
+			this.cStarlightLum.Orientation = System.Windows.Forms.Orientation.Vertical;
+			this.cStarlightLum.Size = new System.Drawing.Size(90, 336);
+			this.cStarlightLum.TabIndex = 3;
+			this.cStarlightLum.TickFrequency = 100;
+			this.cStarlightLum.Value = 500;
 			// 
-			// ctl_lum
+			// cLuminance
 			// 
-			this.ctl_lum.Location = new System.Drawing.Point(102, 5);
-			this.ctl_lum.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-			this.ctl_lum.Maximum = 1000;
-			this.ctl_lum.Name = "ctl_lum";
-			this.ctl_lum.Orientation = System.Windows.Forms.Orientation.Vertical;
-			this.ctl_lum.Size = new System.Drawing.Size(90, 336);
-			this.ctl_lum.TabIndex = 2;
-			this.ctl_lum.TickFrequency = 100;
-			this.ctl_lum.Value = 600;
+			this.cLuminance.Location = new System.Drawing.Point(102, 5);
+			this.cLuminance.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+			this.cLuminance.Maximum = 1000;
+			this.cLuminance.Name = "cLuminance";
+			this.cLuminance.Orientation = System.Windows.Forms.Orientation.Vertical;
+			this.cLuminance.Size = new System.Drawing.Size(90, 336);
+			this.cLuminance.TabIndex = 2;
+			this.cLuminance.TickFrequency = 100;
+			this.cLuminance.Value = 500;
 			// 
-			// ctl_sat
+			// cSaturation
 			// 
-			this.ctl_sat.Location = new System.Drawing.Point(200, 5);
-			this.ctl_sat.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-			this.ctl_sat.Maximum = 1000;
-			this.ctl_sat.Name = "ctl_sat";
-			this.ctl_sat.Orientation = System.Windows.Forms.Orientation.Vertical;
-			this.ctl_sat.Size = new System.Drawing.Size(90, 336);
-			this.ctl_sat.TabIndex = 4;
-			this.ctl_sat.TickFrequency = 100;
-			this.ctl_sat.Value = 1000;
+			this.cSaturation.Location = new System.Drawing.Point(200, 5);
+			this.cSaturation.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+			this.cSaturation.Maximum = 1000;
+			this.cSaturation.Name = "cSaturation";
+			this.cSaturation.Orientation = System.Windows.Forms.Orientation.Vertical;
+			this.cSaturation.Size = new System.Drawing.Size(90, 336);
+			this.cSaturation.TabIndex = 4;
+			this.cSaturation.TickFrequency = 100;
+			this.cSaturation.Value = 1000;
 			// 
 			// ctl_debug
 			// 
@@ -176,6 +182,7 @@
 			this.flowLayoutPanel3.Controls.Add(this.cColourSelected);
 			this.flowLayoutPanel3.Controls.Add(this.cColourSetAll);
 			this.flowLayoutPanel3.Controls.Add(this.groupBox1);
+			this.flowLayoutPanel3.Controls.Add(this.cPartyDebugShot);
 			this.flowLayoutPanel3.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.flowLayoutPanel3.Location = new System.Drawing.Point(445, 5);
 			this.flowLayoutPanel3.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
@@ -216,6 +223,8 @@
 			// 
 			// groupBox1
 			// 
+			this.groupBox1.Controls.Add(this.cFuncPartyNoGame);
+			this.groupBox1.Controls.Add(this.cFuncPartyGame);
 			this.groupBox1.Controls.Add(this.cFuncChannelTest);
 			this.groupBox1.Controls.Add(this.cFuncStatic);
 			this.groupBox1.Controls.Add(this.cFuncRainbow);
@@ -223,10 +232,34 @@
 			this.groupBox1.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
 			this.groupBox1.Name = "groupBox1";
 			this.groupBox1.Padding = new System.Windows.Forms.Padding(4, 5, 4, 5);
-			this.groupBox1.Size = new System.Drawing.Size(272, 217);
+			this.groupBox1.Size = new System.Drawing.Size(272, 262);
 			this.groupBox1.TabIndex = 7;
 			this.groupBox1.TabStop = false;
 			this.groupBox1.Text = "Function";
+			// 
+			// cFuncPartyNoGame
+			// 
+			this.cFuncPartyNoGame.AutoSize = true;
+			this.cFuncPartyNoGame.Location = new System.Drawing.Point(9, 195);
+			this.cFuncPartyNoGame.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+			this.cFuncPartyNoGame.Name = "cFuncPartyNoGame";
+			this.cFuncPartyNoGame.Size = new System.Drawing.Size(180, 29);
+			this.cFuncPartyNoGame.TabIndex = 9;
+			this.cFuncPartyNoGame.TabStop = true;
+			this.cFuncPartyNoGame.Text = "party no game";
+			this.cFuncPartyNoGame.UseVisualStyleBackColor = true;
+			// 
+			// cFuncPartyGame
+			// 
+			this.cFuncPartyGame.AutoSize = true;
+			this.cFuncPartyGame.Location = new System.Drawing.Point(9, 156);
+			this.cFuncPartyGame.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+			this.cFuncPartyGame.Name = "cFuncPartyGame";
+			this.cFuncPartyGame.Size = new System.Drawing.Size(150, 29);
+			this.cFuncPartyGame.TabIndex = 8;
+			this.cFuncPartyGame.TabStop = true;
+			this.cFuncPartyGame.Text = "party game";
+			this.cFuncPartyGame.UseVisualStyleBackColor = true;
 			// 
 			// cFuncChannelTest
 			// 
@@ -265,14 +298,35 @@
 			this.cFuncRainbow.Text = "rainbow cycle";
 			this.cFuncRainbow.UseVisualStyleBackColor = true;
 			// 
+			// cPartyDebugShot
+			// 
+			this.cPartyDebugShot.Location = new System.Drawing.Point(3, 275);
+			this.cPartyDebugShot.Name = "cPartyDebugShot";
+			this.cPartyDebugShot.Size = new System.Drawing.Size(151, 58);
+			this.cPartyDebugShot.TabIndex = 8;
+			this.cPartyDebugShot.Text = "Party Game Debug Shot";
+			this.cPartyDebugShot.UseVisualStyleBackColor = true;
+			this.cPartyDebugShot.Click += new System.EventHandler(this.cPartyDebugShot_Click);
+			// 
 			// ctl_status
 			// 
+			this.ctl_status.ImageScalingSize = new System.Drawing.Size(32, 32);
 			this.ctl_status.Location = new System.Drawing.Point(0, 745);
 			this.ctl_status.Name = "ctl_status";
 			this.ctl_status.Padding = new System.Windows.Forms.Padding(2, 0, 21, 0);
 			this.ctl_status.Size = new System.Drawing.Size(1290, 22);
 			this.ctl_status.TabIndex = 1;
 			this.ctl_status.Text = "statusStrip1";
+			// 
+			// cAutoHunt
+			// 
+			this.cAutoHunt.AutoSize = true;
+			this.cAutoHunt.Location = new System.Drawing.Point(3, 275);
+			this.cAutoHunt.Name = "cAutoHunt";
+			this.cAutoHunt.Size = new System.Drawing.Size(137, 29);
+			this.cAutoHunt.TabIndex = 5;
+			this.cAutoHunt.Text = "Auto-hunt";
+			this.cAutoHunt.UseVisualStyleBackColor = true;
 			// 
 			// Main
 			// 
@@ -283,16 +337,17 @@
 			this.Controls.Add(this.tableLayoutPanel1);
 			this.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
 			this.Name = "Main";
-			this.Text = "Glimmer Harness";
+			this.Text = "Alpha Crucis";
 			this.Load += new System.EventHandler(this.Main_Load);
 			this.tableLayoutPanel1.ResumeLayout(false);
 			this.tableLayoutPanel1.PerformLayout();
 			this.flowLayoutPanel1.ResumeLayout(false);
+			this.flowLayoutPanel1.PerformLayout();
 			this.flowLayoutPanel2.ResumeLayout(false);
 			this.flowLayoutPanel2.PerformLayout();
-			((System.ComponentModel.ISupportInitialize)(this.ctl_hue)).EndInit();
-			((System.ComponentModel.ISupportInitialize)(this.ctl_lum)).EndInit();
-			((System.ComponentModel.ISupportInitialize)(this.ctl_sat)).EndInit();
+			((System.ComponentModel.ISupportInitialize)(this.cStarlightLum)).EndInit();
+			((System.ComponentModel.ISupportInitialize)(this.cLuminance)).EndInit();
+			((System.ComponentModel.ISupportInitialize)(this.cSaturation)).EndInit();
 			this.flowLayoutPanel3.ResumeLayout(false);
 			this.groupBox1.ResumeLayout(false);
 			this.groupBox1.PerformLayout();
@@ -308,10 +363,10 @@
 		private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
 		private System.Windows.Forms.Button cColourSetAll;
 		private System.Windows.Forms.Label cColourSelected;
-		private System.Windows.Forms.TrackBar ctl_lum;
+		private System.Windows.Forms.TrackBar cLuminance;
 		private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel2;
-		private System.Windows.Forms.TrackBar ctl_hue;
-		private System.Windows.Forms.TrackBar ctl_sat;
+		private System.Windows.Forms.TrackBar cStarlightLum;
+		private System.Windows.Forms.TrackBar cSaturation;
 		private System.Windows.Forms.TextBox ctl_debug;
 		private System.Windows.Forms.Button cColourPick;
 		private System.Windows.Forms.Button cHunt;
@@ -321,6 +376,10 @@
 		private System.Windows.Forms.GroupBox groupBox1;
 		private System.Windows.Forms.ListView cGlimList;
 		private System.Windows.Forms.RadioButton cFuncChannelTest;
+		private System.Windows.Forms.RadioButton cFuncPartyGame;
+		private System.Windows.Forms.RadioButton cFuncPartyNoGame;
+		private System.Windows.Forms.Button cPartyDebugShot;
+		private System.Windows.Forms.CheckBox cAutoHunt;
 	}
 }
 
