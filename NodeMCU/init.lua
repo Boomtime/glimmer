@@ -3,10 +3,10 @@ print( ">> init.lua" )
 -- deadman pin is zero on early versions.. until I read the spec for the ESP8266 where I discovered that should never have worked
 local PIN_DEADMAN = 7
 
--- basic info
-majorVer, minorVer, devVer, chipid, flashid, flashsize, flashmode, flashspeed = node.info()
-print( "NodeMCU "..majorVer.."."..minorVer.."."..devVer )
-print( "flashsize "..flashsize )
+-- hardware info
+for k,v in pairs( node.info( "hw" ) ) do
+	print( k, v )
+end
 
 function trim( s )
 	-- from PiL2 20.4

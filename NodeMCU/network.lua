@@ -25,9 +25,23 @@ local glim = {
 	server_port = nil
 }
 
+local net_pull_byte = function( intr )
+	local b = intr % 0x100
+	return b, ( intr - b ) / 0x100
+end
+
+local net_pack_integer = function( intr )
+	local b1, b2, b3, b4
+	b1, intr = net_pull_byte( intr )
+	b2, intr = net_pull_byte( intr )
+	b3, intr = net_pull_byte( intr )
+	b4, intr = net_pull_byte( intr )
+	return string.char( b4, b3, b2, b1 )
+end
+
 local net_send_ident_message = function( msg, ip, port )
 	-- sending ping or pong with our type and identity
-	glim.socket:send( port, ip, string.char( msg, glim.HW_GLIM_V3, cfg.hostname:len() )..cfg.hostname )
+	glim.socket:send( port, ip, string.char( msg, glim.HW_GLIM_V3, cfg.hostname:len() )..cfg.hostname..net_pack_integer( tmr.time() ) )
 end
 
 local net_recv_rgb1 = function( args )
@@ -129,7 +143,7 @@ net_on_connect = function()
 
 	if glim.ANNOUNCE then
 		net_print( "announcing" )
-		net_send_ident_message( glim.MSG_PING, "255.255.255.255", cfg.net.port )
+		net_send_ident_message( glim.MSG_PING, "255.255.255.255", glim.PORT )
 	end
 end
 
