@@ -1,7 +1,8 @@
 ﻿namespace ShadowCreatures.Glimmer {
 	using System;
+    using System.Collections.Generic;
 
-	interface IFxContext {
+    interface IFxContext {
 		/// <summary>time since sequence start</summary>
 		TimeSpan TimeNow { get; }
 
@@ -12,6 +13,21 @@
 	interface IFx {
 		/// <summary>emit effects for current frame</summary>
 		void Execute( IFxContext ctx );
+	}
+
+	interface IFxr {
+		/// <summary>called to reset the effect, always called prior to first execution</summary>
+		/// <param name="pixelCount"></param>
+		void Configure( int pixelCount );
+
+		/// <summary></summary>
+		/// <param name="ctx">current frame context</param>
+		/// <param name="src">source colour data, contains at least the pixelCount of colours, can be ignored</param>
+		/// <returns>enumeration of destination colour data, this will be consumed up to pixelCount</returns>
+		IEnumerable<ColorReal> Execute( IFxContext ctx, IEnumerable<ColorReal> src );
+
+		/// <summary>True to indicate this effect has completed, Execute is no longer valid</summary>
+		bool Finished { get; }
 	}
 
 	class FxContextUnbounded : IFxContext {

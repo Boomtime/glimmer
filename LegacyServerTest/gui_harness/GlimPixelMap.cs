@@ -5,7 +5,7 @@
 	using System.Collections;
 
 	/// <summary>factory initializer for IGlimPixelMap</summary>
-	class GlimDeviceMap : IEnumerable<GlimDevice> {
+	class GlimDeviceMap : IEnumerable<IGlimDevice> {
 
 		struct GlimDeviceMapElement {
 			/// <summary>Packet destination when writing/sourcing pixel data</summary>
@@ -18,7 +18,7 @@
 			public int PixelCount;
 		}
 
-		List<GlimDeviceMapElement> mDeviceList = new List<GlimDeviceMapElement>();
+		readonly List<GlimDeviceMapElement> mDeviceList = new List<GlimDeviceMapElement>();
 
 		/// <summary>add GlimDevice with limit parameters</summary>
 		/// <param name="device"></param>
@@ -41,13 +41,7 @@
 			return res;
 		}
 
-		/// <summary>down-convert to GlimPixelMap, the resulting map is unaffected by changes to this</summary>
-		/// <param name="map"></param>
-		public static implicit operator GlimPixelMap( GlimDeviceMap map ) {
-			return map.Compile();
-		}
-
-		public IEnumerator<GlimDevice> GetEnumerator() {
+		public IEnumerator<IGlimDevice> GetEnumerator() {
 			foreach( var e in mDeviceList )
 				yield return e.Device;
 		}
@@ -93,7 +87,7 @@
 			}
 		}
 
-		List<GlimPixelMapElement> packetList = new List<GlimPixelMapElement>();
+		readonly List<GlimPixelMapElement> packetList = new List<GlimPixelMapElement>();
 
 		public ColorReal this[int pixel] {
 			get {
@@ -138,6 +132,9 @@
 		}
 
 		public void Add( IGlimPacket packet ) {
+			if( null == packet ) {
+				throw new ArgumentNullException( "packet argument must not be null" );
+			}
 			Add( packet, 0, packet.Device.PixelCount );
 		}
 

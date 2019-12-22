@@ -15,7 +15,7 @@
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
-    <PlatformTarget>x86</PlatformTarget>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -38,7 +38,7 @@
     <OutputPath>bin\x64\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <DebugType>full</DebugType>
-    <PlatformTarget>x64</PlatformTarget>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
@@ -68,6 +68,7 @@
     <Compile Include="ColorReal.cs" />
     <Compile Include="FxBase.cs" />
     <Compile Include="FxCanonBall.cs" />
+    <Compile Include="FxChristmasTwinkle.cs" />
     <Compile Include="FxScale.cs" />
     <Compile Include="FxStarlightTwinkle.cs" />
     <Compile Include="FxRainbow.cs" />
@@ -83,6 +84,7 @@
     </Compile>
     <Compile Include="Network.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="ProgramChristmas.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="Main.resx">
       <DependentUpon>Main.cs</DependentUpon>

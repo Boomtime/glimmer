@@ -22,6 +22,7 @@
 			ChannelTest,
 			PartyGame,
 			PartyNoGame,
+			Christmas,
 		}
 
 		/// <summary>internal descriptor of a device, extends GlimDevice</summary>
@@ -32,10 +33,14 @@
 			public readonly Color? PartyColor;
 			public DateTime? ButtonDownTimestamp { get; set; }
 			public FxCannonBall FxFloodFill;
+
+			public int BootCount = 0;
+			public TimeSpan BootTime = TimeSpan.Zero;
 		}
 
 		NetworkServer mNetwork;
 		Dictionary<string, GlimDescriptor> mGlimDevices = new Dictionary<string,GlimDescriptor>();
+		IGlimPixelMap mGlimPixelMapContiguous = new GlimPixelMap();
 		System.Windows.Forms.Timer mAutoHuntTimer = new Timer();
 		System.Windows.Forms.Timer mCyclingTimer = new System.Windows.Forms.Timer();
 		ColorReal mCyclingColor = new ColorReal( Color.Red );
@@ -54,6 +59,7 @@
 		FxScale mFxStarlightScale;
 		DateTime? mButtonUpSynchronizeTimestamp;
 		FxStarlightTwinkle mFxCannonTwinkle;
+		ProgramChristmas mProgramChristmas;
 
 		enum GameState {
 			Null,
@@ -89,6 +95,9 @@
 
 			cFuncPartyNoGame.Tag = OutputFunc.PartyNoGame;
 			cFuncPartyNoGame.CheckedChanged += ctl_funcCheckChanged;
+
+			cFuncChristmas.Tag = OutputFunc.Christmas;
+			cFuncChristmas.CheckedChanged += ctl_funcCheckChanged;
 		}
 
 		private void CAutoHunt_CheckedChanged( object sender, EventArgs e ) {
@@ -110,25 +119,21 @@
 		}
 
 		void Main_Load( object sender, EventArgs e ) {
-			mNetwork = new NetworkServer();
-			mNetwork.PingReceived += NetworkPingReceived;
-			mNetwork.PongReceived += NetworkPongReceived;
-			mNetwork.ButtonStatusReceived += NetworkButtonStatusReceived;
-			mNetwork.Listen();
-
 			var gs102 = new GlimDescriptor( "GlimSwarm-102" ) { PixelCount = 100 };
 			var gs103 = mGlimRedGun = new GlimDescriptor( "GlimSwarm-103", Color.Red ) { PixelCount = 150 };
-			var gs104 = mGlimBlueGun = new GlimDescriptor( "GlimSwarm-104", Color.Blue ) { PixelCount = 100 };
+			var gs104 = mGlimBlueGun = new GlimDescriptor( "GlimSwarm-104", Color.Blue ) { PixelCount = 200 };
 
 			mGlimDevices.Add( gs102.DeviceName, gs102 );
 			mGlimDevices.Add( gs103.DeviceName, gs103 );
 			mGlimDevices.Add( gs104.DeviceName, gs104 );
 
-			mPixelMapStars = new GlimDeviceMap { gs102 };
-			mPixelMapRedGun = new GlimDeviceMap { { gs103, 0, 100 } };
-			mPixelMapBlueGun = new GlimDeviceMap { { gs104, 0, 100 } };
-			mPixelMapBarrel = new GlimDeviceMap { { gs103, 100, 50 } };
-			mPixelMapPerimeter = new GlimDeviceMap { { gs103, 0, 100 }, { gs104, 100, -100 } };
+			mProgramChristmas = new ProgramChristmas( gs103, gs104 );
+
+			mPixelMapStars = new GlimDeviceMap { gs102 }.Compile();
+			mPixelMapRedGun = new GlimDeviceMap { { gs103, 0, 100 } }.Compile();
+			mPixelMapBlueGun = new GlimDeviceMap { { gs104, 0, 100 } }.Compile();
+			mPixelMapBarrel = new GlimDeviceMap { { gs103, 100, 50 } }.Compile();
+			mPixelMapPerimeter = new GlimDeviceMap { { gs103, 0, 100 }, { gs104, 100, -100 } }.Compile();
 
 			mFxPerimeterRainbow = new FxRainbow( mPixelMapPerimeter );
 			mFxPerimeterScale = new FxScale( mPixelMapPerimeter );
@@ -143,6 +148,12 @@
 			mFxCannonTwinkle = new FxStarlightTwinkle( mPixelMapStars ) {
 				BaseColor = Color.FromArgb( 0xff, 0, 0xff ), SpeedFactor = 15.0,
 				LuminanceMinima = 0.2, LuminanceMaxima = 0.8 };
+
+			mNetwork = new NetworkServer();
+			mNetwork.PingReceived += NetworkPingReceived;
+			mNetwork.PongReceived += NetworkPongReceived;
+			mNetwork.ButtonStatusReceived += NetworkButtonStatusReceived;
+			mNetwork.Listen();
 		}
 
 		private void CbFxCannonBallBarrel_Finished( object sender, EventArgs e ) {
@@ -191,7 +202,7 @@
 			return null;
 		}
 
-		/// <summary>find a device by IPAddress</summary>
+		/// <summary>find a device by hostname</summary>
 		/// <param name="hostname"></param>
 		/// <returns></returns>
 		GlimDescriptor FindDevice( string hostname ) {
@@ -202,17 +213,13 @@
 		/// <param name="hostname">name of the device to find or create</param>
 		/// <param name="sourceAddress">optional, if not null, authoritative sourceAddress (has been seen at this address)</param>
 		/// <returns></returns>
-		GlimDescriptor FindOrCreateDevice( string hostname, IPEndPoint sourceAddress, out bool firstSight ) {
+		GlimDescriptor FindOrCreateDevice( string hostname, IPEndPoint sourceAddress ) {
 			var g = FindDevice( hostname );
-			firstSight = true;
 			if( null == g ) {
 				g = new GlimDescriptor( hostname ) { IPEndPoint = sourceAddress, PixelCount = PixelCountPerString };
 				mGlimDevices.Add( hostname, g );
 			}
 			else {
-				if( null != g.IPEndPoint ) {
-					firstSight = false;
-				}
 				g.IPEndPoint = sourceAddress;
 			}
 			return g;
@@ -225,9 +232,8 @@
 					// Hue is unique in that it's circular
 					mCyclingColor.Hue += HueDuty;
 					cColourSelected.BackColor = mCyclingColor;
-					var map = CreateCompletePixelMap();
 					// map a smooth rainbow across them all
-					GenerateVectorColourWheel( map, mCyclingColor );
+					GenerateVectorColourWheel( mGlimPixelMapContiguous, mCyclingColor );
 					TransmitAllPackets();
 					break;
 				case OutputFunc.ChannelTest:
@@ -255,6 +261,10 @@
 					AdjustForGameState( ctx );
 					TransmitAllPackets();
 					break;
+				case OutputFunc.Christmas:
+					mProgramChristmas.Execute( LuminanceMultiplier, SaturationMultiplier );
+					TransmitAllPackets();
+					break;
 			}
 		}
 
@@ -276,10 +286,10 @@
 		}
 
 		/// <summary>direct call to UI objects to rebuild the glim list</summary>
-		void UIRebuildGlimList(){
+		void UIRebuildGlimList() {
 			cGlimList.Items.Clear();
 			foreach( var g in AllSeenDevices() ) {
-				cGlimList.Items.Add( g.DeviceName );
+				cGlimList.Items.Add( string.Format( "{0} ({1})", g.DeviceName, g.BootCount ) );
 			}
 		}
 
@@ -291,11 +301,9 @@
 				case HardwareType.GlimV2:
 				case HardwareType.GlimV3:
 					PrintLine( "ping/pong from a " + e.HardwareType.ToString() + " named " + e.Hostname );
-					var g = FindOrCreateDevice( e.Hostname, e.SourceAddress, out bool created );
-					if( created ) {
-						PrintLine( "added to display list" );
-						SafeCall( UIRebuildGlimList );
-					}
+					var g = FindOrCreateDevice( e.Hostname, e.SourceAddress );
+					UpdateDevice( g, e.Uptime );
+					mGlimPixelMapContiguous = CreateCompletePixelMap();
 					// reply if appropriate
 					if( NetworkMessage.Ping == msg ) {
 						SendPong( e.SourceAddress );
@@ -308,6 +316,15 @@
 			}
 		}
 
+		private void UpdateDevice( GlimDescriptor g, TimeSpan uptime ) {
+			if( 0 == g.BootCount || uptime.TotalSeconds < g.BootTime.TotalSeconds ) {
+				g.BootCount ++;
+				PrintLine( "added to display list or device crashed" );
+				SafeCall( UIRebuildGlimList );
+			}
+			g.BootTime = uptime;
+		}
+
 		void NetworkPingReceived( object sender, NetworkPingEventArgs e ) {
 			ProcessPingPong( NetworkMessage.Ping, e );
 		}
@@ -318,6 +335,12 @@
 
 		void NetworkButtonStatusReceived( object sender, NetworkButtonStatusEventArgs e ) {
 			var g = FindDevice( e.SourceAddress );
+
+			if( OutputFunc.Christmas == mFunc ) {
+				mProgramChristmas.ButtonStateChanged( e.ButtonStatus );
+				return;
+			}
+
 			// only responding to blue and red guns
 			if( null == g || null == g.PartyColor || null == g.FxFloodFill ) {
 				return;
@@ -387,12 +410,10 @@
 		/// <returns>the complete map</returns>
 		GlimPixelMap CreateCompletePixelMap() {
 			GlimPixelMap map = new GlimPixelMap();
-
 			// create a contiguous pixel map
 			foreach( var ep in mGlimDevices ) {
 				map.Add( ep.Value.PixelData );
 			}
-
 			return map;
 		}
 
@@ -438,7 +459,8 @@
 			ColorReal onHeld;
 
 			if( g.PartyColor.HasValue ) {
-				if( OutputFunc.PartyGame == mFunc && !g.FxFloodFill.IsRunning && GameState.Null == mGameState ) {
+				if( ( OutputFunc.PartyGame == mFunc && !g.FxFloodFill.IsRunning && GameState.Null == mGameState ) ||
+					OutputFunc.Christmas == mFunc ) {
 					min = g.PartyColor.Value;
 					min.Luminance = 0.1;
 					max = g.PartyColor.Value;
@@ -507,30 +529,26 @@
 			mFunc = (OutputFunc)rb.Tag;
 			mCyclingTimer.Stop();
 
-			switch( mFunc )
-			{
+			switch( mFunc ) {
 				case OutputFunc.Static:
 					// nothing
 					mCyclingTimer.Stop();
-					break;
-				case OutputFunc.Rainbow:
-					mCyclingTimer.Interval = SmoothTick;
-					mCyclingTimer.Start();
 					break;
 				case OutputFunc.ChannelTest:
 					mCyclingTimer.Interval = ChannelTestTick;
 					mCyclingTimer.Start();
 					break;
+				case OutputFunc.Rainbow:
 				case OutputFunc.PartyGame:
-					mCyclingTimer.Interval = SmoothTick;
-					mCyclingTimer.Start();
-					break;
 				case OutputFunc.PartyNoGame:
 					mCyclingTimer.Interval = SmoothTick;
 					mCyclingTimer.Start();
 					break;
+				case OutputFunc.Christmas:
+					mCyclingTimer.Interval = SmoothTick;
+					mCyclingTimer.Start();
+					break;
 			}
-
 			foreach( var g in AllSeenDevices() ) {
 				SendButtonGlimmer( g );
 			}

@@ -22,7 +22,9 @@
 					mData[pixel] = new ColorReal( Color.Black );
 				return mData[pixel];
 			}
-			set { mData[pixel] = new ColorReal( value ); }
+			set {
+				mData[pixel] = new ColorReal( value );
+			}
 		}
 
 		public IEnumerator<ColorReal> GetEnumerator() {

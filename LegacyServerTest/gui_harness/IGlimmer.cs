@@ -14,7 +14,7 @@
 	}
 
 	interface IGlimPacket : IEnumerable<ColorReal> {
-		
+
 		/// <summary>device that will receive this packet</summary>
 		IGlimDevice Device { get; }
 
@@ -26,7 +26,7 @@
 
 	/// <summary>maps a contiguous vector of pixels to potentially disparate pixels in underlying devices</summary>
 	interface IGlimPixelMap : IEnumerable<ColorReal> {
-		
+
 		int PixelCount { get; }
 
 		ColorReal this[int pixel] { get; set; }
