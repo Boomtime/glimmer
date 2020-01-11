@@ -4,9 +4,9 @@ print( ">> init.lua" )
 local PIN_DEADMAN = 7
 
 -- hardware info
-for k,v in pairs( node.info( "hw" ) ) do
-	print( k, v )
-end
+--for k,v in pairs( node.info( "hw" ) ) do
+--	print( k, v )
+--end
 
 function trim( s )
 	-- from PiL2 20.4
@@ -34,6 +34,7 @@ if 0 ~= gpio.read( PIN_DEADMAN ) then
 end
 
 -- execute main sequence
+print( ">> main.lua @ "..node.heap() )
 local main,err = loadfile( "main.lua" )
 if main then
 	print( "executing main sequence >>>" )

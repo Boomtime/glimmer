@@ -9,18 +9,21 @@
 <btnc> ::= 6 <rgb> <rgb> <short> <rgb> ; glimmer minima, maxima, period, on-held
 
 
-<ping-payload> ::= <hw-type> <hostname> <uptime>
+<ping-payload> ::= <hw-type> <hostname> <uptime> <cpu> <wifi-dbm>
 <rgb-payload> ::= <rgb> | <rgb> <rgb-payload>
 <rgb> ::= <byte> <byte> <byte>
-<hw-type> ::= <server> | <glim-v2> | <glim-v3>
+<hw-type> ::= <server> | <glim-v2> | <glim-v3> | <glim-v4>
 <hostname> ::= <string>
 <uptime> ::= <int> ; seconds since start (~68 years before wrap)
+<cpu> ::= <byte> ; 0-255 ratio of cpu used (sampled) 0 = 0%, 255 = 100%
+<wifi-dbm> ::= <byte> ; 255+dbm, higher is better, thus 250 means -5dbm, 230 means -25dbm
 
 <btn-state> ::= 1 | 2 | 3 ; down, held, up respectively (held is sent every 100ms)
 
 <server> ::= 1
-<glim-v2> ::= 2  ; 6 (2xRGB) open-collector high power outputs, use <rgb1> and <rgb2> as single pixel each
+<glim-v2> ::= 2  ; 6 (2xRGB) open-collector high power outputs, use <rgb1> and <rgb2> as single pixel each (might be a glim-v4 in battery mode)
 <glim-v3> ::= 3  ; 2 strings of WS2812 (if WS2811 is used, send the triplets as GBR), RGB1 and RGB2 outputs are each a vector of pixels
+<glim-v4> ::= 4  ; 1 string of WS2811
 
 <byte> ::= 0-255
 <int> ::= <byte> <byte> <byte> <byte> ; int (signed) big endian

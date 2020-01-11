@@ -30,6 +30,11 @@
 		public void Add( GlimDevice device ) {
 			Add( device, 0, device.PixelCount );
 		}
+		public void Add( params GlimDevice[] devices ) {
+			foreach( var d in devices ) { 
+				Add( d );
+			}
+		}
 
 		/// <summary>compile to a GlimPixelMap, the resulting map is unaffected by further changes to this</summary>
 		/// <returns></returns>

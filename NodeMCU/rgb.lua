@@ -1,52 +1,50 @@
-print( ">> rgb.lua" )
-
 -- glimswarm v3
--- ws2812 (single wire protocol) dual outputs
--- note the system lamps need to be set once or rgb_set won't function correctly
+-- ws2812 (single wire protocol)
 
-local rgb_print = function( msg )
-	print( "rgb: "..msg )
-end
-
-local rgb = {
+local const = protect( {
 	DRIVER_PIN = 1,
-	WS2812_MODE = ws2812.MODE_SINGLE,
+} )
+
+local self = {
 	system_lamp = string.char( 0, 0, 0 ),
 	switch_lamp = string.char( 0, 0, 0 ),
+	update_in_progress = false
 }
 
-gpio.mode( rgb.DRIVER_PIN, gpio.OUTPUT )
-gpio.write( rgb.DRIVER_PIN, gpio.HIGH )
-ws2812.init( rgb.WS2812_MODE )
-
--- either vector can be nil
-rgb_set = function( vector1, vector2 )
-	ws2812.write( vector1, vector2 )
-end
+gpio.mode( const.DRIVER_PIN, gpio.OUTPUT )
+gpio.write( const.DRIVER_PIN, gpio.LOW )
+ws2812.init( ws2812.MODE_SINGLE )
 
 local rgb_update_system_vector = function()
-	--rgb_print( "rgb_update_system_vector" )
-	gpio.write( rgb.DRIVER_PIN, gpio.HIGH )
+	gpio.write( const.DRIVER_PIN, gpio.HIGH )
 	tmr.delay( 20 )
-	ws2812.write( rgb.system_lamp .. rgb.switch_lamp, nil )
+	ws2812.write( self.system_lamp .. self.switch_lamp, nil )
 	tmr.delay( 10 )
-	gpio.write( rgb.DRIVER_PIN, gpio.LOW )
+	gpio.write( const.DRIVER_PIN, gpio.LOW )
+	self.update_in_progress = false
 end
 
-rgb_system_set = function( rgb_vector )
-	if 3 == rgb_vector:len() then
-		rgb.system_lamp = rgb_vector
+local rgb_queue_update = function()
+	if true ~= self.update_in_progress then
+		self.update_in_progress = true
 		node.task.post( node.task.LOW_PRIORITY, rgb_update_system_vector )
-	else
-		rgb_print( "rgb_system_set(): incorrect string length" )
 	end
 end
 
-rgb_switch_set = function( rgb_vector )
-	if 3 == rgb_vector:len() then
-		rgb.switch_lamp = rgb_vector
-		node.task.post( node.task.LOW_PRIORITY, rgb_update_system_vector )
-	else
-		rgb_print( "rgb_switch_set(): incorrect string length" )
+return {
+	set = function( vector1 )
+		ws2812.write( vector1, nil )
+	end,
+
+	system_set = function( rgb_vector )
+		assert( 3 == rgb_vector:len() )
+		self.system_lamp = rgb_vector
+		rgb_queue_update()
+	end,
+
+	switch_set = function( rgb_vector )
+		assert( 3 == rgb_vector:len() )
+		self.switch_lamp = rgb_vector
+		rgb_queue_update()
 	end
-end
+}

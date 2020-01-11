@@ -1,5 +1,6 @@
 ﻿namespace ShadowCreatures.Glimmer {
 	using System;
+	using System.Linq;
 	using System.Net;
 	using System.Net.Sockets;
 	using System.Collections.Generic;
@@ -27,6 +28,7 @@
 		Server = 1,
 		GlimV2 = 2,
 		GlimV3 = 3,
+		GlimV4 = 4,
 	}
 
 	/// <summary>glim device button status byte</summary>
@@ -34,6 +36,14 @@
 		Down = 1,
 		Held = 2,
 		Up = 3,
+	}
+
+	public enum WifiRSSI : int {
+		None = -200, // everything beyond -72dbm or unknown, not likely to get a packet through if it exists at all
+		Terrible = -72, // (down to), will get some comms, but might be tragic
+		Weak = -63, // (down to), reliable only if it's consistent
+		Good = -54, // (down to), very solid and reliable, can handle variation
+		Excellent = -30, // down to -30, on top of the router, may have caught fire
 	}
 
 	/// <summary>base class for all event args from the server, always have a IPEndPoint SourceAddress</summary>
@@ -46,14 +56,36 @@
 
 	/// <summary>gives paramters to ping/pong events</summary>
 	class NetworkPingEventArgs : NetworkEventArgs {
-		public NetworkPingEventArgs( IPEndPoint source, HardwareType hw, string hostname, TimeSpan uptime ) : base( source ) {
+		public NetworkPingEventArgs( IPEndPoint source, HardwareType hw, string hostname, TimeSpan uptime, float cpu, int dbm ) : base( source ) {
 			HardwareType = hw;
 			Hostname = hostname;
 			Uptime = uptime;
+			CPU = cpu;
+			dBm = dbm;
+			RSSI = DBMtoRSSI( dbm );
 		}
 		public readonly HardwareType HardwareType;
 		public readonly string Hostname;
 		public readonly TimeSpan Uptime;
+		public readonly float CPU;
+		public readonly int dBm;
+		public readonly WifiRSSI RSSI;
+
+		static WifiRSSI DBMtoRSSI( int dbm ) {
+			if( dbm >= (int)WifiRSSI.Excellent ) {
+				return WifiRSSI.Excellent;
+			}
+			if( dbm >= (int)WifiRSSI.Good ) {
+				return WifiRSSI.Good;
+			}
+			if( dbm >= (int)WifiRSSI.Weak ) {
+				return WifiRSSI.Weak;
+			}
+			if( dbm >= (int)WifiRSSI.Terrible ) {
+				return WifiRSSI.Terrible;
+			}
+			return WifiRSSI.None;
+		}
 	}
 
 	class NetworkButtonStatusEventArgs : NetworkEventArgs {
@@ -169,13 +201,17 @@
 			switch( msg ) {
 				case NetworkMessage.Ping:
 				case NetworkMessage.Pong: {
-					var args = new NetworkPingEventArgs( rhost, (HardwareType)dgram[1],
-						ExtractPascalString( dgram, 2, out int strend ),
-						TimeSpan.FromSeconds( ExtractInteger( dgram, strend ) ) );
-					if( NetworkMessage.Ping == msg )
+					var hname = ExtractPascalString( dgram, 2, out int strend );
+					var uptime = TimeSpan.FromSeconds( ExtractInteger( dgram, strend ) );
+					float cpu = dgram.Length > strend + 4 ? (float)( dgram[strend + 4] ) / byte.MaxValue : 0;
+					int dbm = dgram.Length > strend + 5 ? (int)dgram[strend + 5] - byte.MaxValue : -200;
+					var args = new NetworkPingEventArgs( rhost, (HardwareType)dgram[1], hname, uptime, cpu, dbm );
+					if( NetworkMessage.Ping == msg ) { 
 						OnPingReceived( args );
-					else
+					}
+					else {
 						OnPongReceived( args );
+					}
 				}
 				break;
 

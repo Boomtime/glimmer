@@ -9,8 +9,8 @@
 		readonly DateTime mStart = DateTime.Now;
 		bool mColourMode = false;
 
-		public ProgramChristmas( GlimDevice tree, GlimDevice garland ) {
-			var map = new GlimDeviceMap { { garland }, { tree } }.Compile();
+		public ProgramChristmas( GlimDevice tree, params GlimDevice[] garland ) {
+			var map = new GlimDeviceMap { tree, garland }.Compile();
 			mFxTwinkle = new FxChristmasTwinkle( map );
 			mFxRainbow = new FxRainbow( map );
 			mFxScale = new FxScale( map );

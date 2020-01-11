@@ -51,6 +51,8 @@
 			this.cFuncRainbow = new System.Windows.Forms.RadioButton();
 			this.cPartyDebugShot = new System.Windows.Forms.Button();
 			this.ctl_status = new System.Windows.Forms.StatusStrip();
+			this.flowLayoutPanel4 = new System.Windows.Forms.FlowLayoutPanel();
+			this.cLogging = new System.Windows.Forms.CheckBox();
 			this.tableLayoutPanel1.SuspendLayout();
 			this.flowLayoutPanel1.SuspendLayout();
 			this.flowLayoutPanel2.SuspendLayout();
@@ -59,6 +61,7 @@
 			((System.ComponentModel.ISupportInitialize)(this.cSaturation)).BeginInit();
 			this.flowLayoutPanel3.SuspendLayout();
 			this.groupBox1.SuspendLayout();
+			this.flowLayoutPanel4.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// tableLayoutPanel1
@@ -73,14 +76,16 @@
 			this.tableLayoutPanel1.Controls.Add(this.flowLayoutPanel2, 0, 1);
 			this.tableLayoutPanel1.Controls.Add(this.ctl_debug, 1, 1);
 			this.tableLayoutPanel1.Controls.Add(this.flowLayoutPanel3, 1, 0);
+			this.tableLayoutPanel1.Controls.Add(this.flowLayoutPanel4, 1, 2);
 			this.tableLayoutPanel1.Location = new System.Drawing.Point(17, 18);
 			this.tableLayoutPanel1.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
 			this.tableLayoutPanel1.Name = "tableLayoutPanel1";
-			this.tableLayoutPanel1.RowCount = 2;
+			this.tableLayoutPanel1.RowCount = 3;
 			this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 52.73973F));
 			this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 47.26027F));
+			this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 44F));
 			this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
-			this.tableLayoutPanel1.Size = new System.Drawing.Size(1150, 701);
+			this.tableLayoutPanel1.Size = new System.Drawing.Size(1295, 915);
 			this.tableLayoutPanel1.TabIndex = 0;
 			// 
 			// flowLayoutPanel1
@@ -92,7 +97,7 @@
 			this.flowLayoutPanel1.Location = new System.Drawing.Point(4, 5);
 			this.flowLayoutPanel1.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
 			this.flowLayoutPanel1.Name = "flowLayoutPanel1";
-			this.flowLayoutPanel1.Size = new System.Drawing.Size(396, 359);
+			this.flowLayoutPanel1.Size = new System.Drawing.Size(447, 449);
 			this.flowLayoutPanel1.TabIndex = 1;
 			// 
 			// cGlimList
@@ -109,7 +114,7 @@
 			// 
 			// cHunt
 			// 
-			this.cHunt.Location = new System.Drawing.Point(4, 267);
+			this.cHunt.Location = new System.Drawing.Point(268, 5);
 			this.cHunt.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
 			this.cHunt.Name = "cHunt";
 			this.cHunt.Size = new System.Drawing.Size(146, 57);
@@ -121,7 +126,7 @@
 			// cAutoHunt
 			// 
 			this.cAutoHunt.AutoSize = true;
-			this.cAutoHunt.Location = new System.Drawing.Point(157, 265);
+			this.cAutoHunt.Location = new System.Drawing.Point(3, 265);
 			this.cAutoHunt.Name = "cAutoHunt";
 			this.cAutoHunt.Size = new System.Drawing.Size(124, 29);
 			this.cAutoHunt.TabIndex = 5;
@@ -134,10 +139,10 @@
 			this.flowLayoutPanel2.Controls.Add(this.cLuminance);
 			this.flowLayoutPanel2.Controls.Add(this.cSaturation);
 			this.flowLayoutPanel2.Dock = System.Windows.Forms.DockStyle.Fill;
-			this.flowLayoutPanel2.Location = new System.Drawing.Point(4, 374);
+			this.flowLayoutPanel2.Location = new System.Drawing.Point(4, 464);
 			this.flowLayoutPanel2.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
 			this.flowLayoutPanel2.Name = "flowLayoutPanel2";
-			this.flowLayoutPanel2.Size = new System.Drawing.Size(396, 322);
+			this.flowLayoutPanel2.Size = new System.Drawing.Size(447, 401);
 			this.flowLayoutPanel2.TabIndex = 3;
 			// 
 			// cStarlightLum
@@ -179,13 +184,13 @@
 			// ctl_debug
 			// 
 			this.ctl_debug.Dock = System.Windows.Forms.DockStyle.Fill;
-			this.ctl_debug.Location = new System.Drawing.Point(408, 374);
+			this.ctl_debug.Location = new System.Drawing.Point(459, 464);
 			this.ctl_debug.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
 			this.ctl_debug.Multiline = true;
 			this.ctl_debug.Name = "ctl_debug";
 			this.ctl_debug.ReadOnly = true;
 			this.ctl_debug.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-			this.ctl_debug.Size = new System.Drawing.Size(738, 322);
+			this.ctl_debug.Size = new System.Drawing.Size(832, 401);
 			this.ctl_debug.TabIndex = 4;
 			// 
 			// flowLayoutPanel3
@@ -196,10 +201,10 @@
 			this.flowLayoutPanel3.Controls.Add(this.groupBox1);
 			this.flowLayoutPanel3.Controls.Add(this.cPartyDebugShot);
 			this.flowLayoutPanel3.Dock = System.Windows.Forms.DockStyle.Fill;
-			this.flowLayoutPanel3.Location = new System.Drawing.Point(408, 5);
+			this.flowLayoutPanel3.Location = new System.Drawing.Point(459, 5);
 			this.flowLayoutPanel3.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
 			this.flowLayoutPanel3.Name = "flowLayoutPanel3";
-			this.flowLayoutPanel3.Size = new System.Drawing.Size(738, 359);
+			this.flowLayoutPanel3.Size = new System.Drawing.Size(832, 449);
 			this.flowLayoutPanel3.TabIndex = 5;
 			// 
 			// cColourPick
@@ -324,7 +329,7 @@
 			// 
 			// cPartyDebugShot
 			// 
-			this.cPartyDebugShot.Location = new System.Drawing.Point(3, 300);
+			this.cPartyDebugShot.Location = new System.Drawing.Point(657, 3);
 			this.cPartyDebugShot.Name = "cPartyDebugShot";
 			this.cPartyDebugShot.Size = new System.Drawing.Size(138, 56);
 			this.cPartyDebugShot.TabIndex = 8;
@@ -335,18 +340,39 @@
 			// ctl_status
 			// 
 			this.ctl_status.ImageScalingSize = new System.Drawing.Size(32, 32);
-			this.ctl_status.Location = new System.Drawing.Point(0, 714);
+			this.ctl_status.Location = new System.Drawing.Point(0, 928);
 			this.ctl_status.Name = "ctl_status";
 			this.ctl_status.Padding = new System.Windows.Forms.Padding(2, 0, 19, 0);
-			this.ctl_status.Size = new System.Drawing.Size(1183, 22);
+			this.ctl_status.Size = new System.Drawing.Size(1328, 22);
 			this.ctl_status.TabIndex = 1;
 			this.ctl_status.Text = "statusStrip1";
+			// 
+			// flowLayoutPanel4
+			// 
+			this.flowLayoutPanel4.Controls.Add(this.cLogging);
+			this.flowLayoutPanel4.Dock = System.Windows.Forms.DockStyle.Fill;
+			this.flowLayoutPanel4.Location = new System.Drawing.Point(458, 873);
+			this.flowLayoutPanel4.Name = "flowLayoutPanel4";
+			this.flowLayoutPanel4.Size = new System.Drawing.Size(834, 39);
+			this.flowLayoutPanel4.TabIndex = 6;
+			// 
+			// cLogging
+			// 
+			this.cLogging.AutoSize = true;
+			this.cLogging.Checked = true;
+			this.cLogging.CheckState = System.Windows.Forms.CheckState.Checked;
+			this.cLogging.Location = new System.Drawing.Point(3, 3);
+			this.cLogging.Name = "cLogging";
+			this.cLogging.Size = new System.Drawing.Size(180, 29);
+			this.cLogging.TabIndex = 0;
+			this.cLogging.Text = "Verbose logging";
+			this.cLogging.UseVisualStyleBackColor = true;
 			// 
 			// Main
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(11F, 24F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(1183, 736);
+			this.ClientSize = new System.Drawing.Size(1328, 950);
 			this.Controls.Add(this.ctl_status);
 			this.Controls.Add(this.tableLayoutPanel1);
 			this.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
@@ -365,6 +391,8 @@
 			this.flowLayoutPanel3.ResumeLayout(false);
 			this.groupBox1.ResumeLayout(false);
 			this.groupBox1.PerformLayout();
+			this.flowLayoutPanel4.ResumeLayout(false);
+			this.flowLayoutPanel4.PerformLayout();
 			this.ResumeLayout(false);
 			this.PerformLayout();
 
@@ -395,6 +423,8 @@
 		private System.Windows.Forms.Button cPartyDebugShot;
 		private System.Windows.Forms.CheckBox cAutoHunt;
 		private System.Windows.Forms.RadioButton cFuncChristmas;
+		private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel4;
+		private System.Windows.Forms.CheckBox cLogging;
 	}
 }
 

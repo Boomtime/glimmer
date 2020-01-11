@@ -114,20 +114,18 @@
 			SendPing();
 		}
 
-		private void CPartyDebugShot_Click( object sender, EventArgs e ) {
-			throw new NotImplementedException();
-		}
-
 		void Main_Load( object sender, EventArgs e ) {
+			var gs101 = new GlimDescriptor( "GlimSwarm-101", Color.Aqua ) { PixelCount = 200 };
 			var gs102 = new GlimDescriptor( "GlimSwarm-102" ) { PixelCount = 100 };
 			var gs103 = mGlimRedGun = new GlimDescriptor( "GlimSwarm-103", Color.Red ) { PixelCount = 150 };
 			var gs104 = mGlimBlueGun = new GlimDescriptor( "GlimSwarm-104", Color.Blue ) { PixelCount = 200 };
 
+			mGlimDevices.Add( gs101.DeviceName, gs101 );
 			mGlimDevices.Add( gs102.DeviceName, gs102 );
 			mGlimDevices.Add( gs103.DeviceName, gs103 );
 			mGlimDevices.Add( gs104.DeviceName, gs104 );
 
-			mProgramChristmas = new ProgramChristmas( gs103, gs104 );
+			mProgramChristmas = new ProgramChristmas( gs103, gs104, gs101 );
 
 			mPixelMapStars = new GlimDeviceMap { gs102 }.Compile();
 			mPixelMapRedGun = new GlimDeviceMap { { gs103, 0, 100 } }.Compile();
@@ -300,7 +298,13 @@
 					break;
 				case HardwareType.GlimV2:
 				case HardwareType.GlimV3:
-					PrintLine( "ping/pong from a " + e.HardwareType.ToString() + " named " + e.Hostname );
+				case HardwareType.GlimV4:
+					PrintLine( string.Format( "ping/pong from {0} ({1}) cpu {2}%, wifi strength {3}",
+						e.Hostname,
+						e.HardwareType.ToString(),
+						(int)( e.CPU * 100 ),
+						e.RSSI.ToString()
+					) );
 					var g = FindOrCreateDevice( e.Hostname, e.SourceAddress );
 					UpdateDevice( g, e.Uptime );
 					mGlimPixelMapContiguous = CreateCompletePixelMap();
@@ -457,7 +461,6 @@
 			ColorReal min;
 			ColorReal max;
 			ColorReal onHeld;
-
 			if( g.PartyColor.HasValue ) {
 				if( ( OutputFunc.PartyGame == mFunc && !g.FxFloodFill.IsRunning && GameState.Null == mGameState ) ||
 					OutputFunc.Christmas == mFunc ) {
@@ -473,7 +476,6 @@
 					max = Color.Black;
 					onHeld = Color.Black;
 				}
-
 				mNetwork.SendButtonColor( g.IPEndPoint, min, max, 1024, onHeld );
 			}
 		}
@@ -494,8 +496,9 @@
 		void SendColour( Color clr ) {
 			foreach( var g in AllSeenDevices() ) {
 				var pkt = g.PixelData;
-				for( int p = 0 ; p < pkt.Device.PixelCount ; p++ )
+				for( int p = 0 ; p < pkt.Device.PixelCount ; p++ ) {
 					pkt[p] = clr;
+				}
 				mNetwork.SendRGB( g.IPEndPoint, pkt );
 			}
 		}
