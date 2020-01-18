@@ -104,7 +104,7 @@ void lamp_impl_s::update( void ) {
 #				define CH(x) uint8_t( uint(this->max.x) * current / this->period )
 				current = this->fade_time_target - current;
 				this->value = rgb_t( CH(r), CH(g), CH(b) );
-				//DEBUG_SPRINT( "lamp::update(): fading system, current [%i] period [%i] rgb [%i,%i,%i]", current, this->period, this->value.r, this->value.g, this->value.b );
+				//DEBUG_SPRINT( "lamp::update(): fading, current [%i] period [%i] rgb [%i,%i,%i]", current, this->period, this->value.r, this->value.g, this->value.b );
 			}
 		}
 		needs_update = true;

@@ -42,12 +42,12 @@
 		/// <summary>converts the HSL interior colour to RGB values at high precision</summary>
 		public void GetRGB( out double r, out double g, out double b ) {
 			if( 0 == Luminance ) {
-				r = g = b = 0.0;
+				r = g = b = 0.0; // darkness
 				return;
 			}
 
 			if( 0 == Saturation ) {
-				r = g = b = Luminance;
+				r = g = b = Luminance; // greyscale
 				return;
 			}
 
@@ -114,7 +114,7 @@
 
 			GetRGB( out r, out g, out b );
 
-			return Color.FromArgb( Byte.MaxValue, (int)( r * 255 ), (int)( g * 255 ), (int)( b * 255 ) );
+			return Color.FromArgb( Byte.MaxValue, (int)( r * Byte.MaxValue ), (int)( g * Byte.MaxValue ), (int)( b * Byte.MaxValue ) );
 		}
 
 		/// <summary>convert to Color on-the-fly</summary>

@@ -1,12 +1,8 @@
 ﻿namespace ShadowCreatures.Glimmer {
-	using System;
 	using System.Collections.Generic;
 	using System.Drawing;
 
-	class FxChristmasTwinkle : FxBase {
-
-		public FxChristmasTwinkle( IGlimPixelMap map ) : base( map ) {
-		}
+	class FxChristmasTwinkle : IFx {
 
 		public double CyclesPerSecond = 0.4;
 		public double StridePerPixel = 0.15;
@@ -16,14 +12,18 @@
 		public double LumHigh = 0.52;
 		public double Saturation = 0.55;
 
-		/// <summary>write current frame data to pixel map</summary>
-		public override void Execute( IFxContext ctx ) {
+		public bool IsRunning => true;
 
+		public void Initialize( int pixelCount ) {
+			// nothing to do
+		}
+
+		public IEnumerable<Color> Execute( IFxContext ctx ) {
 			var secondsPerCycle = ( 1.0 / CyclesPerSecond );
 			var posBase = ( ctx.TimeNow.TotalSeconds % secondsPerCycle ) / secondsPerCycle * 2;
 			var posShift = false;
 
-			foreach( var pix in PixelMap ) {
+			while( true ) {
 				ColorReal clr = BaseColour;
 				clr.Saturation = Saturation;
 				var pos = posBase;
@@ -37,11 +37,12 @@
 				else {
 					clr.Luminance = LumLow + ( pos * ( LumHigh - LumLow ) );
 				}
-				pix.CopyFrom( clr );
+
+				yield return clr;
 
 				posBase += StridePerPixel;
 				if( posBase > 2 ) {
-					posBase = posBase - 2;
+					posBase -= 2;
 				}
 			}
 		}

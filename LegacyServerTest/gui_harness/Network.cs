@@ -6,9 +6,10 @@
 	using System.Collections.Generic;
 	using System.Text;
 	using System.Diagnostics;
+    using System.Drawing;
 
-	/// <summary>order of colour triples</summary>
-	public enum NetworkColorOrder {
+    /// <summary>order of colour triples</summary>
+    public enum NetworkColorOrder {
 		RGB, // WS2812 (Glim orders the output modulator for this goal)
 		GBR, // WS2811 (bizarro world)
 	}
@@ -40,9 +41,9 @@
 
 	public enum WifiRSSI : int {
 		None = -200, // everything beyond -72dbm or unknown, not likely to get a packet through if it exists at all
-		Terrible = -72, // (down to), will get some comms, but might be tragic
-		Weak = -63, // (down to), reliable only if it's consistent
-		Good = -54, // (down to), very solid and reliable, can handle variation
+		Terrible = -87, // (down to), will get some comms, but might be tragic
+		Weak = -75, // (down to), reliable only if it's consistent
+		Good = -57, // (down to), very solid and reliable, can handle variation
 		Excellent = -30, // down to -30, on top of the router, may have caught fire
 	}
 
@@ -201,29 +202,29 @@
 			switch( msg ) {
 				case NetworkMessage.Ping:
 				case NetworkMessage.Pong: {
-					var hname = ExtractPascalString( dgram, 2, out int strend );
-					var uptime = TimeSpan.FromSeconds( ExtractInteger( dgram, strend ) );
-					float cpu = dgram.Length > strend + 4 ? (float)( dgram[strend + 4] ) / byte.MaxValue : 0;
-					int dbm = dgram.Length > strend + 5 ? (int)dgram[strend + 5] - byte.MaxValue : -200;
-					var args = new NetworkPingEventArgs( rhost, (HardwareType)dgram[1], hname, uptime, cpu, dbm );
-					if( NetworkMessage.Ping == msg ) { 
-						OnPingReceived( args );
+						var hname = ExtractPascalString( dgram, 2, out int strend );
+						var uptime = TimeSpan.FromSeconds( ExtractInteger( dgram, strend ) );
+						float cpu = dgram.Length > strend + 4 ? (float)( dgram[strend + 4] ) / byte.MaxValue : 0;
+						int dbm = dgram.Length > strend + 5 ? (int)dgram[strend + 5] - byte.MaxValue : -200;
+						var args = new NetworkPingEventArgs( rhost, (HardwareType)dgram[1], hname, uptime, cpu, dbm );
+						if( NetworkMessage.Ping == msg ) {
+							OnPingReceived( args );
+						}
+						else {
+							OnPongReceived( args );
+						}
 					}
-					else {
-						OnPongReceived( args );
-					}
-				}
-				break;
+					break;
 
 				case NetworkMessage.ButtonStatus: {
 						OnButtonStatusReceived( new NetworkButtonStatusEventArgs( rhost, (ButtonStatus)dgram[1] ) );
-				}
-				break;
+					}
+					break;
 
 				default: {
-					Debug.WriteLine( string.Format( "mystery message ({0}) received (and ignored)", dgram[0] ) );
-				}
-				break;
+						Debug.WriteLine( string.Format( "mystery message ({0}) received (and ignored)", dgram[0] ) );
+					}
+					break;
 			}
 		}
 
@@ -237,32 +238,39 @@
 			mSocket.Send( ping, ping.Length, dst );
 		}
 
-		public void SendRGB( IPEndPoint dst, IEnumerable<ColorReal> vector, NetworkColorOrder order = NetworkColorOrder.RGB ) {
-			var dgram = new List<byte>();
+		class DGramList : List<byte> {
+			public void AddRGB( Color c ) { Add( c.R ); Add( c.G ); Add( c.B ); }
+			public void AddGBR( Color c ) { Add( c.G ); Add( c.B ); Add( c.R ); }
+		}
+
+		public void SendRGB( IPEndPoint dst, IEnumerable<Color> vector, NetworkColorOrder order = NetworkColorOrder.RGB ) {
+			var dgram = new DGramList();
 			dgram.Add( (byte)NetworkMessage.RGB1 );
 			if( NetworkColorOrder.GBR == order ) {
-				foreach( var c in vector )
-					dgram.AddRange( c.ToGBRArray() );
+				foreach( var c in vector ) {
+					dgram.AddGBR( c );
+				}
 			}
 			else {
-				foreach( var c in vector )
-					dgram.AddRange( c.ToRGBArray() );
+				foreach( var c in vector ) {
+					dgram.AddRGB( c );
+				}
 			}
 			mSocket.Send( dgram.ToArray(), dgram.Count, dst );
 		}
 
-		public void SendButtonColor( IPEndPoint dst, ColorReal min, ColorReal max, short period, ColorReal onHeld, NetworkColorOrder order = NetworkColorOrder.RGB ) {
-			var dgram = new List<byte>();
+		public void SendButtonColor( IPEndPoint dst, Color min, Color max, short period, Color onHeld, NetworkColorOrder order = NetworkColorOrder.RGB ) {
+			var dgram = new DGramList();
 			dgram.Add( (byte)NetworkMessage.ButtonColor );
 
 			// low/high
 			if( NetworkColorOrder.GBR == order ) {
-				dgram.AddRange( min.ToGBRArray() );
-				dgram.AddRange( max.ToGBRArray() );
+				dgram.AddGBR( min );
+				dgram.AddGBR( max );
 			}
 			else {
-				dgram.AddRange( min.ToRGBArray() );
-				dgram.AddRange( max.ToRGBArray() );
+				dgram.AddRGB( min );
+				dgram.AddRGB( max );
 			}
 
 			// period (1024ms)
@@ -270,10 +278,12 @@
 			dgram.Add( (byte)( period & 0xFF ) );
 
 			// on-held
-			if( NetworkColorOrder.GBR == order )
-				dgram.AddRange( onHeld.ToGBRArray() );
-			else
-				dgram.AddRange( onHeld.ToRGBArray() );
+			if( NetworkColorOrder.GBR == order ) {
+				dgram.AddGBR( onHeld );
+			}
+			else {
+				dgram.AddRGB( onHeld );
+			}
 
 			mSocket.Send( dgram.ToArray(), dgram.Count, dst );
 		}

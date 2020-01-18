@@ -1,8 +1,23 @@
 ﻿namespace ShadowCreatures.Glimmer {
 	using System;
     using System.Collections.Generic;
+    using System.Drawing;
 
-    interface IFxContext {
+	[AttributeUsage( AttributeTargets.Field | AttributeTargets.Property )]
+	class ConfigurableAttribute : Attribute {
+	}
+
+	class ConfigurableDoubleAttribute : ConfigurableAttribute {
+		public double Minimum { get; set; }
+		public double Maximum { get; set; }
+	}
+
+	class ConfigurableIntegerAttribute : ConfigurableAttribute {
+		public int Minimum { get; set; }
+		public int Maximum { get; set; }
+	}
+
+	interface IFxContext {
 		/// <summary>time since sequence start</summary>
 		TimeSpan TimeNow { get; }
 
@@ -11,23 +26,17 @@
 	}
 
 	interface IFx {
-		/// <summary>emit effects for current frame</summary>
-		void Execute( IFxContext ctx );
-	}
-
-	interface IFxr {
 		/// <summary>called to reset the effect, always called prior to first execution</summary>
-		/// <param name="pixelCount"></param>
-		void Configure( int pixelCount );
+		/// <param name="pixelCount">effector is expected to supply this number of pixels from Execute</param>
+		void Initialize( int pixelCount );
 
 		/// <summary></summary>
 		/// <param name="ctx">current frame context</param>
-		/// <param name="src">source colour data, contains at least the pixelCount of colours, can be ignored</param>
 		/// <returns>enumeration of destination colour data, this will be consumed up to pixelCount</returns>
-		IEnumerable<ColorReal> Execute( IFxContext ctx, IEnumerable<ColorReal> src );
+		IEnumerable<Color> Execute( IFxContext ctx );
 
-		/// <summary>True to indicate this effect has completed, Execute is no longer valid</summary>
-		bool Finished { get; }
+		/// <summary>indicates if Execute method should be called</summary>
+		bool IsRunning { get; }
 	}
 
 	class FxContextUnbounded : IFxContext {
@@ -38,15 +47,5 @@
 
 		public TimeSpan TimeNow => mTimeNow;
 		public TimeSpan TimeLength => TimeSpan.Zero;
-	}
-
-	abstract class FxBase : IFx {
-		protected readonly IGlimPixelMap PixelMap;
-
-		public FxBase( IGlimPixelMap map ) {
-			PixelMap = map;
-		}
-
-		public abstract void Execute( IFxContext ctx );
 	}
 }

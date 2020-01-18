@@ -3,9 +3,10 @@
 	using System.Linq;
 	using System.Collections.Generic;
 	using System.Collections;
+    using System.Drawing;
 
-	/// <summary>factory initializer for IGlimPixelMap</summary>
-	class GlimDeviceMap : IEnumerable<IGlimDevice> {
+    /// <summary>factory initializer for IGlimPixelMap</summary>
+    class GlimDeviceMap : IEnumerable<IGlimDevice> {
 
 		struct GlimDeviceMapElement {
 			/// <summary>Packet destination when writing/sourcing pixel data</summary>
@@ -52,8 +53,9 @@
 		}
 
 		IEnumerator IEnumerable.GetEnumerator() {
-			foreach( var e in mDeviceList )
+			foreach( var e in mDeviceList ) {
 				yield return e.Device;
+			}
 		}
 	}
 
@@ -65,6 +67,8 @@
 		}
 
 		class GlimPixelMapElement {
+			// @todo: should be two of these, one forwards other backwards rather than checking all the time
+
 			/// <summary>Packet destination when writing/sourcing pixel data</summary>
 			public readonly IGlimPacket Packet;
 
@@ -90,35 +94,65 @@
 					Direction = GlimPixelMapDirection.Forwards;
 				}
 			}
+
+			/// <summary>writes colour data into the map in the configured direction</summary>
+			/// <param name="src">colour data to consume</param>
+			/// <returns>true if all configured destination pixels were filled</returns>
+			public bool Write( IEnumerator<Color> src ) {
+				if( GlimPixelMapDirection.Forwards == Direction ) {
+					int pos = PixelStart;
+					int limit = PixelStart + PixelCount;
+					while( pos < limit ) {
+						if( !src.MoveNext() ) {
+							return false;
+						}
+						Packet.SetPixel( pos, src.Current );
+						pos++;
+					}
+				}
+				else {
+					int pos = PixelStart + PixelCount;
+					int limit = PixelStart;
+					while( pos > limit ) {
+						if( !src.MoveNext() ) {
+							return false;
+						}
+						pos--;
+						Packet.SetPixel( pos, src.Current );
+					}
+				}
+				return true;
+			}
+
+			public IEnumerable<Color> Read() {
+				if( GlimPixelMapDirection.Forwards == Direction ) {
+					for( var pixel = PixelStart ; pixel < PixelStart + PixelCount ; pixel++ ) {
+						yield return Packet[pixel];
+					}
+				}
+				else {
+					for( var pixel = PixelStart + PixelCount - 1 ; pixel >= PixelStart ; pixel-- ) {
+						yield return Packet[pixel];
+					}
+				}
+			}
 		}
 
 		readonly List<GlimPixelMapElement> packetList = new List<GlimPixelMapElement>();
 
-		public ColorReal this[int pixel] {
-			get {
-				foreach( var pi in packetList ) {
-					if( pi.PixelCount > pixel ) {
-						if( GlimPixelMapDirection.Forwards == pi.Direction )
-							return pi.Packet[pi.PixelStart + pixel];
-						else
-							return pi.Packet[pi.PixelStart + pi.PixelCount - pixel - 1];
-					}
-
-					pixel -= pi.PixelCount;
+		public void Write( IEnumerable<Color> src ) {
+			var ce = src.GetEnumerator();
+			foreach( var pi in packetList ) {
+				if( !pi.Write( ce ) ) {
+					break;
 				}
-
-				throw new IndexOutOfRangeException( "Pixel index is out of range" );
 			}
-			set {
-				foreach( var pi in packetList ) {
-					if( pi.PixelCount > pixel ) {
-						if( GlimPixelMapDirection.Forwards == pi.Direction )
-							pi.Packet[pi.PixelStart + pixel] = value;
-						else
-							pi.Packet[pi.PixelStart + pi.PixelCount - pixel - 1] = value;
-						break;
-					}
-					pixel -= pi.PixelCount;
+		}
+
+		public IEnumerable<Color> Read() {
+			foreach( var p in packetList ) {
+				foreach( var c in p.Read() ) {
+					yield return c;
 				}
 			}
 		}
@@ -130,9 +164,9 @@
 		}
 
 		public void Add( IGlimPacket packet, int pixelStart, int pixelCount ) {
-			if( pixelStart < 0 || pixelStart + pixelCount > packet.Device.PixelCount )
+			if( pixelStart < 0 || pixelStart + pixelCount > packet.Device.PixelCount ) {
 				throw new ArgumentOutOfRangeException( "pixelStart or pixelCount are beyond the packet device capabilities" );
-
+			}
 			packetList.Add( new GlimPixelMapElement( packet, pixelStart, pixelCount ) );
 		}
 
@@ -141,23 +175,6 @@
 				throw new ArgumentNullException( "packet argument must not be null" );
 			}
 			Add( packet, 0, packet.Device.PixelCount );
-		}
-
-		public IEnumerator<ColorReal> GetEnumerator() {
-			foreach( var item in packetList ) {
-				if( GlimPixelMapDirection.Forwards == item.Direction ) {
-					for( var pixel = item.PixelStart ; pixel < item.PixelStart + item.PixelCount ; pixel++ )
-						yield return item.Packet[pixel];
-				}
-				else {
-					for( var pixel = item.PixelStart + item.PixelCount - 1 ; pixel >= item.PixelStart ; pixel-- )
-						yield return item.Packet[pixel];
-				}
-			}
-		}
-
-		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() {
-			throw new NotImplementedException();
 		}
 	}
 }

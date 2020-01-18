@@ -1,17 +1,22 @@
 ﻿namespace ShadowCreatures.Glimmer {
+	using System.Collections.Generic;
 	using System.Drawing;
 
-	class FxRainbow : FxBase {
+	class FxRainbow : IFx {
 
-		public FxRainbow( IGlimPixelMap map ) : base( map ) {
-		}
-
+		[ConfigurableDouble( Minimum = 0.01, Maximum = 1.0 )]
 		public double HueCyclesPerSecond = 0.08;
 
+		[ConfigurableDouble( Minimum = 0.001, Maximum = 1.0 )]
 		public double HueStridePerPixel = 0.01;
 
-		/// <summary>write current frame data to pixel map</summary>
-		public override void Execute( IFxContext ctx ) {
+		public bool IsRunning => true;
+
+		public void Initialize( int pixelCount ) {
+			// nothing to do
+		}
+
+		public IEnumerable<Color> Execute( IFxContext ctx ) {
 			ColorReal rc = Color.Red; // any RGB primary color will do as a seed
 			if( ctx.TimeLength.TotalSeconds > 0.0 ) {
 				rc.Hue = ctx.TimeNow.TotalSeconds / ctx.TimeLength.TotalSeconds;
@@ -21,8 +26,8 @@
 				rc.Hue = ( ctx.TimeNow.TotalSeconds % secondsPerCycle ) / secondsPerCycle;
 			}
 
-			foreach( var pix in PixelMap ) {
-				pix.CopyFrom( rc );
+			while( true ) {
+				yield return rc;
 				rc.Hue -= HueStridePerPixel;
 			}
 		}

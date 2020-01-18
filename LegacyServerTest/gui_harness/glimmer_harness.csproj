@@ -66,8 +66,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ColorReal.cs" />
-    <Compile Include="FxBase.cs" />
-    <Compile Include="FxCanonBall.cs" />
+    <Compile Include="IFx.cs" />
+    <Compile Include="FxComet.cs" />
     <Compile Include="FxChristmasTwinkle.cs" />
     <Compile Include="FxScale.cs" />
     <Compile Include="FxStarlightTwinkle.cs" />

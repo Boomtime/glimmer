@@ -1,7 +1,8 @@
 ﻿namespace ShadowCreatures.Glimmer {
 	using System.Collections.Generic;
+    using System.Drawing;
 
-	interface IGlimDevice {
+    interface IGlimDevice {
 
 		/// <summary>name by which the device knows itself, generally from the EEPROM, also usually announces itself like this on the network</summary>
 		string DeviceName { get; }
@@ -13,7 +14,7 @@
 		int PixelCount { get; }
 	}
 
-	interface IGlimPacket : IEnumerable<ColorReal> {
+	interface IGlimPacket {
 
 		/// <summary>device that will receive this packet</summary>
 		IGlimDevice Device { get; }
@@ -21,14 +22,25 @@
 		/// <summary>get/set the colour data for the given pixel index</summary>
 		/// <param name="pixel">index of the pixel to address</param>
 		/// <returns>ColourReal of pixel data</returns>
-		ColorReal this[int pixel] { get; set; }
+		Color this[int pixel] { get; }
+
+		/// <summary>enumerate all packet data</summary>
+		/// <returns></returns>
+		IEnumerable<Color> Read();
+
+		/// <summary>set pixel preserving blend using src-alpha</summary>
+		/// <param name="pixel"></param>
+		/// <param name="src"></param>
+		void SetPixel( int pixel, Color src );
 	}
 
 	/// <summary>maps a contiguous vector of pixels to potentially disparate pixels in underlying devices</summary>
-	interface IGlimPixelMap : IEnumerable<ColorReal> {
+	interface IGlimPixelMap {
 
 		int PixelCount { get; }
 
-		ColorReal this[int pixel] { get; set; }
+		void Write( IEnumerable<Color> src );
+
+		IEnumerable<Color> Read();
 	}
 }

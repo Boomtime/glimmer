@@ -32,15 +32,22 @@
 			}
 			public readonly Color? PartyColor;
 			public DateTime? ButtonDownTimestamp { get; set; }
-			public FxCannonBall FxFloodFill;
+			public IFx FxFloodFill;
 
 			public int BootCount = 0;
 			public TimeSpan BootTime = TimeSpan.Zero;
 		}
 
+		enum GameState {
+			Null,
+			SynchronizedShotsFired,
+			BarrelShotFired,
+			CoolDown,
+		}
+
 		NetworkServer mNetwork;
 		Dictionary<string, GlimDescriptor> mGlimDevices = new Dictionary<string,GlimDescriptor>();
-		IGlimPixelMap mGlimPixelMapContiguous = new GlimPixelMap();
+		IGlimPixelMap mGlimPixelMapContiguous;
 		System.Windows.Forms.Timer mAutoHuntTimer = new Timer();
 		System.Windows.Forms.Timer mCyclingTimer = new System.Windows.Forms.Timer();
 		ColorReal mCyclingColor = new ColorReal( Color.Red );
@@ -53,23 +60,14 @@
 		GlimPixelMap mPixelMapBlueGun;
 		GlimPixelMap mPixelMapBarrel;
 		GlimPixelMap mPixelMapPerimeter;
-		FxBase mFxPerimeterRainbow;
-		FxScale mFxPerimeterScale;
-		FxStarlightTwinkle mFxStarlight;
-		FxScale mFxStarlightScale;
+		FxScale mFxPerimeterRainbow;
+		FxScale mFxStarlight;
 		DateTime? mButtonUpSynchronizeTimestamp;
-		FxStarlightTwinkle mFxCannonTwinkle;
-		ProgramChristmas mProgramChristmas;
-
-		enum GameState {
-			Null,
-			SynchronizedShotsFired,
-			BarrelShotFired,
-			CoolDown,
-		}
+		IFx mFxCannonTwinkle;
 		GameState mGameState = GameState.Null;
 		DateTime mGameCoolDownStart;
-		FxCannonBall mFxBarrel;
+		IFx mFxBarrel;
+		ProgramChristmas mProgramChristmas;
 
 		public Main() {
 			InitializeComponent();
@@ -125,6 +123,8 @@
 			mGlimDevices.Add( gs103.DeviceName, gs103 );
 			mGlimDevices.Add( gs104.DeviceName, gs104 );
 
+			mGlimPixelMapContiguous = CreateCompletePixelMap();
+
 			mProgramChristmas = new ProgramChristmas( gs103, gs104, gs101 );
 
 			mPixelMapStars = new GlimDeviceMap { gs102 }.Compile();
@@ -133,17 +133,23 @@
 			mPixelMapBarrel = new GlimDeviceMap { { gs103, 100, 50 } }.Compile();
 			mPixelMapPerimeter = new GlimDeviceMap { { gs103, 0, 100 }, { gs104, 100, -100 } }.Compile();
 
-			mFxPerimeterRainbow = new FxRainbow( mPixelMapPerimeter );
-			mFxPerimeterScale = new FxScale( mPixelMapPerimeter );
-			mFxStarlight = new FxStarlightTwinkle( mPixelMapStars ) { BaseColor = Color.Yellow };
-			mFxStarlightScale = new FxScale( mPixelMapStars ) { SaturationScale = 0.3 };
-			mGlimRedGun.FxFloodFill = new FxCannonBall( mPixelMapRedGun ) { BaseColor = Color.Red };
-			mGlimRedGun.FxFloodFill.Finished += CbFxCannonBallRed_Finished;
-			mGlimBlueGun.FxFloodFill = new FxCannonBall( mPixelMapBlueGun ) { BaseColor = Color.Blue };
-			mGlimBlueGun.FxFloodFill.Finished += CbFxCannonBallBlue_Finished;
-			mFxBarrel = new FxCannonBall( mPixelMapBarrel ) { BaseColor = Color.FromArgb( 0xff, 0, 0xff ) };
-			mFxBarrel.Finished += CbFxCannonBallBarrel_Finished;
-			mFxCannonTwinkle = new FxStarlightTwinkle( mPixelMapStars ) {
+			mFxPerimeterRainbow = new FxScale( new FxRainbow() );
+			mFxPerimeterRainbow.Initialize( mPixelMapPerimeter.PixelCount );
+			mFxStarlight = new FxScale( new FxStarlightTwinkle { BaseColor = Color.Yellow } ) { SaturationScale = 0.3 };
+			mFxStarlight.Initialize( mPixelMapStars.PixelCount );
+
+			// comets!
+			FxComet t;
+			t = new FxComet { BaseColor = Color.Red };
+			t.Finished += CbFxCannonBallRed_Finished;
+			mGlimRedGun.FxFloodFill = t;
+			t = new FxComet { BaseColor = Color.Blue };
+			t.Finished += CbFxCannonBallBlue_Finished;
+			mGlimBlueGun.FxFloodFill = t;
+			t = new FxComet { BaseColor = Color.FromArgb( 0xff, 0, 0xff ) };
+			t.Finished += CbFxCannonBallBarrel_Finished;
+			mFxBarrel = t;
+			mFxCannonTwinkle = new FxStarlightTwinkle {
 				BaseColor = Color.FromArgb( 0xff, 0, 0xff ), SpeedFactor = 15.0,
 				LuminanceMinima = 0.2, LuminanceMaxima = 0.8 };
 
@@ -155,25 +161,22 @@
 		}
 
 		private void CbFxCannonBallBarrel_Finished( object sender, EventArgs e ) {
-			( sender as FxCannonBall ).Stop();
 			mGameState = GameState.CoolDown;
 			mGameCoolDownStart = DateTime.Now;
 		}
 
 		private void CbFxCannonBallRed_Finished( object sender, EventArgs e ) {
-			( sender as FxCannonBall ).Stop();
 			SendButtonGlimmer( mGlimRedGun );
 			if( GameState.SynchronizedShotsFired == mGameState ) {
-				mFxBarrel.Start( 50 );
+				mFxBarrel.Initialize( 50 );
 				mGameState = GameState.BarrelShotFired;
 			}
 		}
 
 		private void CbFxCannonBallBlue_Finished( object sender, EventArgs e ) {
-			( sender as FxCannonBall ).Stop();
 			SendButtonGlimmer( mGlimBlueGun );
 			if( GameState.SynchronizedShotsFired == mGameState ) {
-				mFxBarrel.Start( 50 );
+				mFxBarrel.Initialize( 50 );
 				mGameState = GameState.BarrelShotFired;
 			}
 		}
@@ -231,7 +234,7 @@
 					mCyclingColor.Hue += HueDuty;
 					cColourSelected.BackColor = mCyclingColor;
 					// map a smooth rainbow across them all
-					GenerateVectorColourWheel( mGlimPixelMapContiguous, mCyclingColor );
+					mGlimPixelMapContiguous.Write( GenerateVectorColourWheel( mCyclingColor ) );
 					TransmitAllPackets();
 					break;
 				case OutputFunc.ChannelTest:
@@ -246,16 +249,21 @@
 				case OutputFunc.PartyGame:
 				case OutputFunc.PartyNoGame:
 					var ctx = new FxContextUnbounded( mPartyStart );
-					mFxPerimeterRainbow.Execute( ctx );
-					mFxPerimeterScale.LuminanceScale = LuminanceMultiplier;
-					mFxPerimeterScale.SaturationScale = SaturationMultiplier;
-					mFxPerimeterScale.Execute( ctx );
-					mFxStarlight.Execute( ctx );
-					mFxStarlightScale.LuminanceScale = LuminanceStarlightMultiplier;
-					mFxStarlightScale.Execute( ctx );
-					mGlimRedGun.FxFloodFill.Execute( ctx );
-					mGlimBlueGun.FxFloodFill.Execute( ctx );
-					mFxBarrel.Execute( ctx );
+					mFxPerimeterRainbow.LuminanceScale = PerimeterLuminanceMultiplier;
+					mFxPerimeterRainbow.SaturationScale = SaturationMultiplier;
+					mPixelMapPerimeter.Write( mFxPerimeterRainbow.Execute( ctx ) );
+					mFxStarlight.LuminanceScale = LuminanceStarlightMultiplier;
+					mPixelMapStars.Write( mFxStarlight.Execute( ctx ) );
+
+					if( mGlimRedGun.FxFloodFill.IsRunning ) {
+						mPixelMapRedGun.Write( mGlimRedGun.FxFloodFill.Execute( ctx ) );
+					}
+					if( mGlimBlueGun.FxFloodFill.IsRunning ) {
+						mPixelMapBlueGun.Write( mGlimBlueGun.FxFloodFill.Execute( ctx ) );
+					}
+					if( mFxBarrel.IsRunning ) {
+						mPixelMapBarrel.Write( mFxBarrel.Execute( ctx ) );
+					}
 					AdjustForGameState( ctx );
 					TransmitAllPackets();
 					break;
@@ -268,7 +276,6 @@
 
 		private void ColourPick_Click( object sender, EventArgs e ) {
 			var dlg = new ColorDialog { Color = cColourSelected.BackColor };
-
 			if( DialogResult.OK == dlg.ShowDialog( this ) ) {
 				cColourSelected.BackColor = dlg.Color;
 				SendColour( cColourSelected.BackColor );
@@ -299,15 +306,19 @@
 				case HardwareType.GlimV2:
 				case HardwareType.GlimV3:
 				case HardwareType.GlimV4:
-					PrintLine( string.Format( "ping/pong from {0} ({1}) cpu {2}%, wifi strength {3}",
+					PrintLine( string.Format( "ping/pong from {0} ({1}) cpu {2}%, wifi strength {3} ({4}dbm)",
 						e.Hostname,
 						e.HardwareType.ToString(),
 						(int)( e.CPU * 100 ),
-						e.RSSI.ToString()
+						e.RSSI.ToString(),
+						e.dBm
 					) );
+					int sc = mGlimDevices.Count;
 					var g = FindOrCreateDevice( e.Hostname, e.SourceAddress );
 					UpdateDevice( g, e.Uptime );
-					mGlimPixelMapContiguous = CreateCompletePixelMap();
+					if( mGlimDevices.Count != sc ) {
+						mGlimPixelMapContiguous = CreateCompletePixelMap();
+					}
 					// reply if appropriate
 					if( NetworkMessage.Ping == msg ) {
 						SendPong( e.SourceAddress );
@@ -339,6 +350,7 @@
 
 		void NetworkButtonStatusReceived( object sender, NetworkButtonStatusEventArgs e ) {
 			var g = FindDevice( e.SourceAddress );
+			PrintLine( string.Format( "{0}: Button.{1}", g.DeviceName, e.ButtonStatus ) );
 
 			if( OutputFunc.Christmas == mFunc ) {
 				mProgramChristmas.ButtonStateChanged( e.ButtonStatus );
@@ -349,10 +361,11 @@
 			if( null == g || null == g.PartyColor || null == g.FxFloodFill ) {
 				return;
 			}
+
 			if( ButtonStatus.Up == e.ButtonStatus ) {
-				if( OutputFunc.PartyGame == mFunc ) {
+				if( OutputFunc.PartyGame == mFunc && g.ButtonDownTimestamp.HasValue ) {
 					int tlimit = Math.Min( 100, (int)( ( DateTime.Now - g.ButtonDownTimestamp.Value ).TotalSeconds * 20 ) );
-					g.FxFloodFill.Start( tlimit );
+					g.FxFloodFill.Initialize( tlimit );
 					SendButtonGlimmer( g );
 
 					if( mButtonUpSynchronizeTimestamp.HasValue ) {
@@ -377,9 +390,7 @@
 				}
 				g.ButtonDownTimestamp = null;
 			}
-			else
-			if( !g.ButtonDownTimestamp.HasValue ) {
-				PrintLine( string.Format( "{0} button changed {1}", g.DeviceName, e.ButtonStatus ) );
+			else if( !g.ButtonDownTimestamp.HasValue ) {
 				g.ButtonDownTimestamp = DateTime.Now;
 			}
 		}
@@ -421,6 +432,18 @@
 			return map;
 		}
 
+		double PerimeterLuminanceMultiplier {
+			get {
+				switch( mGameState ) {
+					case GameState.Null:
+					case GameState.SynchronizedShotsFired:
+						return LuminanceMultiplier;
+				}
+				// take 2 seconds to return to full glow
+				return LuminanceMultiplier * ( ( DateTime.Now - mGameCoolDownStart ).TotalSeconds - 1 ) / 2;
+			}
+		}
+
 		void AdjustForGameState( IFxContext ctx ) {
 			switch( mGameState ) {
 				case GameState.Null:
@@ -429,19 +452,13 @@
 			}
 			double lumscale = 0.0;
 			if( GameState.CoolDown == mGameState ) {
-				foreach( var c in mPixelMapBarrel ) {
-					c.CopyFrom( Color.Black );
-				}
-				mFxCannonTwinkle.Execute( ctx );
+				mPixelMapBarrel.Write( InfiniteColor( Color.Black ) );
+				mPixelMapStars.Write( mFxCannonTwinkle.Execute( ctx ) );
+				// take 2 seconds to return to full glow
 				lumscale = ( ( DateTime.Now - mGameCoolDownStart ).TotalSeconds - 1 ) / 2;
 			}
 			if( lumscale < 1 ) {
-				mFxPerimeterScale.LuminanceScale = lumscale;
-				mFxPerimeterScale.SaturationScale = 1.0;
-				mFxPerimeterScale.Execute( ctx );
-				//foreach( var c in mPixelMapPerimeter ) {
-				//	c.Luminance -= lumdiff;
-				//}
+				// legacy
 			}
 			else {
 				mGameState = GameState.Null;
@@ -453,7 +470,7 @@
 		void TransmitAllPackets() {
 			// transmit all packets
 			foreach( var g in AllSeenDevices() ) {
-				mNetwork.SendRGB( g.IPEndPoint, g.PixelData );
+				mNetwork.SendRGB( g.IPEndPoint, g.PixelData.Read() );
 			}
 		}
 
@@ -461,7 +478,7 @@
 			ColorReal min;
 			ColorReal max;
 			ColorReal onHeld;
-			if( g.PartyColor.HasValue ) {
+			if( g.PartyColor.HasValue && null != g.IPEndPoint ) {
 				if( ( OutputFunc.PartyGame == mFunc && !g.FxFloodFill.IsRunning && GameState.Null == mGameState ) ||
 					OutputFunc.Christmas == mFunc ) {
 					min = g.PartyColor.Value;
@@ -480,27 +497,25 @@
 			}
 		}
 
-		void GenerateVectorColourWheel( IGlimPixelMap map, Color start ) {
+		IEnumerable<Color> GenerateVectorColourWheel( Color start ) {
 			ColorReal rc = start;
-
 			rc.Luminance *= LuminanceMultiplier;
 			rc.Saturation *= SaturationMultiplier;
-
-			for( int pixel = 0 ; pixel < map.PixelCount ; pixel++ )
-			{
-				map[pixel] = rc;
+			while( true ) {
+				yield return rc;
 				rc.Hue -= HueStride;
 			}
 		}
 
-		void SendColour( Color clr ) {
-			foreach( var g in AllSeenDevices() ) {
-				var pkt = g.PixelData;
-				for( int p = 0 ; p < pkt.Device.PixelCount ; p++ ) {
-					pkt[p] = clr;
-				}
-				mNetwork.SendRGB( g.IPEndPoint, pkt );
+		IEnumerable<Color> InfiniteColor( Color clr ) {
+			while( true ) {
+				yield return clr;
 			}
+		}
+
+		void SendColour( Color clr ) {
+			mGlimPixelMapContiguous.Write( InfiniteColor( clr ) );
+			TransmitAllPackets();
 		}
 
 		delegate void SafeCallDelegate();
@@ -560,8 +575,8 @@
 		private void cPartyDebugShot_Click( object sender, EventArgs e ) {
 			if( OutputFunc.PartyGame == mFunc && GameState.Null == mGameState ) {
 				mGameState = GameState.SynchronizedShotsFired;
-				mGlimBlueGun.FxFloodFill.Start( 100 );
-				mGlimRedGun.FxFloodFill.Start( 100 );
+				mGlimBlueGun.FxFloodFill.Initialize( 100 );
+				mGlimRedGun.FxFloodFill.Initialize( 100 );
 				SendButtonGlimmer( mGlimBlueGun );
 				SendButtonGlimmer( mGlimRedGun );
 			}

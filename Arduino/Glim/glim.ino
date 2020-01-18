@@ -46,12 +46,13 @@ static struct button_s {
 	rgb_t max;
 	uint period;
 	rgb_t held;
-	net::BUTTON::state state;
+	int down_tick_count;
+	//net::BUTTON::state state;
 } button = { false };
 
 #define SYSTEM_LAMP_GLIMMER_PERIOD 2000
 #define SYSTEM_LAMP_SPARK_PERIOD 2500
-#define LAMP_BUTTON_SPARK_PERIOD 1000
+#define BUTTON_LAMP_SPARK_PERIOD 1000
 
 static volatile bool button_interrupt_flag = false;
 
@@ -92,7 +93,7 @@ KERNEL_LOOP_DEFINE( debug_metrics_print ) {
 	static uint target_time = 0;
 	uint b, f;
 	bool connected;
-	int strength;
+	int strength = -200;
 	connected = net::is_connected( &strength );
 	kernel::cpu::sample( b, f );
 	if( 0 == ( b + f ) ) {
@@ -133,7 +134,7 @@ static void commit_button_lamp_glimmer( void ) {
 static void commit_button_lamp_spark( void ) {
 	DEBUG_TRACE( commit_button_lamp_spark );
 	rgb::lamp::button.set_colour( local::button.held );
-	rgb::lamp::button.set_fader( LAMP_BUTTON_SPARK_PERIOD );
+	rgb::lamp::button.set_fader( BUTTON_LAMP_SPARK_PERIOD );
 }
 
 
@@ -143,40 +144,38 @@ KERNEL_LOOP_DEFINE( button_glimmer ) {
 	if( !local::button.enabled ) {
 		return 250;
 	}
-	// deal with events that occurred while we were sleeping
-	bool was_button_interrupt = local::button_interrupt_flag;
-	local::button_interrupt_flag = false;
+	// deal with events that occurred while we were sleeping (and debounce)
+	bool was_button_interrupt = local::button_interrupt_flag && 0 == local::button.down_tick_count;
 	if( was_button_interrupt ) {
-		if( net::BUTTON::UP != local::button.state ) {
-			// have to pulse the button, we missed the up event within the last 50ms
-			net::send_button_state( net::BUTTON::UP );
-			local::button.state = net::BUTTON::UP;
-		}
 		net::send_button_state( net::BUTTON::DOWN );
+		commit_button_lamp_spark();
 	}
-	// now read current state and send off those conditions
+	// read current state and send off those conditions
 	if( 0 == digitalRead( PIN::BUTTON ) ) {
 		// down... and was it last time too?
-		switch( local::button.state ) {
-		case net::BUTTON::UP: // it only just now went down, give it a chance to release
-			local::button.state = net::BUTTON::DOWN;
+		if( 0 == local::button.down_tick_count ) {
+			net::send_button_state( net::BUTTON::DOWN );
 			commit_button_lamp_spark();
-			break;
-		case net::BUTTON::DOWN: // it's been down one cycle... one more chance
-			local::button.state = net::BUTTON::HELD;
-			break;
-		case net::BUTTON::HELD: // it's been down 2 cycles (100ms)
+		}
+		else if( 5 <= local::button.down_tick_count ) {
 			net::send_button_state( net::BUTTON::HELD );
-			local::button.state = net::BUTTON::DOWN; // back one step to retrigger
-			break;
+			local::button.down_tick_count = 1;
+		}
+		else {
+			local::button.down_tick_count ++;
 		}
 	}
-	else if( net::BUTTON::UP != local::button.state || was_button_interrupt ) {
+	else {
+		// up..
+
+	}
+	if( net::BUTTON::UP != local::button.state || was_button_interrupt ) {
 		net::send_button_state( net::BUTTON::UP );
 		local::button.state = net::BUTTON::UP;
 		commit_button_lamp_glimmer();
 	}
-	return 50;
+	local::button_interrupt_flag = false;
+	return 10;
 }
 
 static void ICACHE_RAM_ATTR button_interrupt( void ) {
@@ -193,7 +192,7 @@ static void net_button_glimmer_recv( rgb_t min, rgb_t max, short period, rgb_t h
 	if( ( min.r || min.g || min.b || max.r || max.g || max.b ) && period > 0 ) {
 		if( !local::button.enabled ) {
 			local::button.enabled = true;
-			local::button.state = net::BUTTON::UP;
+			local::button.down_tick_count = 0;
 			commit_button_lamp_glimmer();
 			attachInterrupt( digitalPinToInterrupt( PIN::BUTTON ), button_interrupt, FALLING );
 		}

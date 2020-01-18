@@ -23,9 +23,9 @@
 
 		public IGlimPacket PixelData {
 			get {
-				if( null == mPacket )
+				if( null == mPacket ) {
 					mPacket = new GlimPacket( this );
-
+				}
 				return mPacket;
 			}
 		}
