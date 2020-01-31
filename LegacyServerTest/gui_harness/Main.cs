@@ -10,32 +10,56 @@
 	public partial class Main : Form {
 		const int SmoothTick = 25; // 1000 / n = FPS (25 = 40FPS)
 		const int ChannelTestTick = 1000;
-		const double HueDuty = 0.002;
 		const double HueStride = 0.01;
 		const int PixelCountPerString = 50;
 		const double ButtonTimeEpsilonSeconds = 0.25;
 		const int AutoHuntInterval = 5000;
 
+		internal interface IProgram {
+			void Execute();
+
+			void ButtonStateChanged( IGlimDevice src, ButtonStatus btn );
+
+			double Luminance { set; }
+			double Saturation { set; }
+		}
+
+		internal abstract class ProgramDefault : IProgram {
+			public virtual double Luminance { set; protected get; }
+			public virtual double Saturation { set; protected get; }
+
+			public virtual void ButtonStateChanged( IGlimDevice src, ButtonStatus btn ) {
+			}
+
+			public static IEnumerable<Color> InfiniteColor( Color clr ) {
+				while( true ) {
+					yield return clr;
+				}
+			}
+
+			public abstract void Execute();
+		}
+
 		public enum OutputFunc {
+			None,
 			Static,
 			Rainbow,
 			ChannelTest,
 			PartyGame,
 			PartyNoGame,
 			Christmas,
+			WindowTest
 		}
 
 		/// <summary>internal descriptor of a device, extends GlimDevice</summary>
 		class GlimDescriptor : GlimDevice {
-			public GlimDescriptor( string hostname, Color? partyColor = null ) : base( hostname ) {
+			public GlimDescriptor( string hostname, Color? partyColor = null ) {
+				DeviceName = hostname;
 				PartyColor = partyColor;
 			}
 			public readonly Color? PartyColor;
 			public DateTime? ButtonDownTimestamp { get; set; }
-			public IFx FxFloodFill;
-
-			public int BootCount = 0;
-			public TimeSpan BootTime = TimeSpan.Zero;
+			public FxComet FxFloodFill;
 		}
 
 		enum GameState {
@@ -46,13 +70,12 @@
 		}
 
 		NetworkServer mNetwork;
-		Dictionary<string, GlimDescriptor> mGlimDevices = new Dictionary<string,GlimDescriptor>();
-		IGlimPixelMap mGlimPixelMapContiguous;
-		System.Windows.Forms.Timer mAutoHuntTimer = new Timer();
-		System.Windows.Forms.Timer mCyclingTimer = new System.Windows.Forms.Timer();
-		ColorReal mCyclingColor = new ColorReal( Color.Red );
-		DateTime mPartyStart = DateTime.Now;
-		OutputFunc mFunc;
+		readonly Dictionary<string, GlimDescriptor> mGlimDevices = new Dictionary<string,GlimDescriptor>();
+		readonly System.Windows.Forms.Timer mAutoHuntTimer = new Timer();
+		readonly System.Windows.Forms.Timer mFrameTimer = new System.Windows.Forms.Timer();
+		readonly DateTime mPartyStart = DateTime.Now;
+		OutputFunc mFunc = OutputFunc.None;
+		IProgram mCurrentProgram;
 		GlimDescriptor mGlimRedGun;
 		GlimDescriptor mGlimBlueGun;
 		GlimPixelMap mPixelMapStars;
@@ -72,30 +95,38 @@
 		public Main() {
 			InitializeComponent();
 
-			mCyclingTimer.Interval = SmoothTick;
-			mCyclingTimer.Tick += ColourCycling_Tick;
+			cUpdatesPerSecond.ValueChanged += CUpdatesPerSecond_ValueChanged;
+			mFrameTimer.Interval = (int)( 1000 / cUpdatesPerSecond.Value );
+			mFrameTimer.Tick += ColourCycling_Tick;
+			mFrameTimer.Start();
 
 			mAutoHuntTimer.Interval = AutoHuntInterval;
 			mAutoHuntTimer.Tick += MAutoHuntTimer_Tick;
 			cAutoHunt.CheckedChanged += CAutoHunt_CheckedChanged;
 
-			cFuncStatic.Tag = OutputFunc.Static;
-			cFuncStatic.CheckedChanged += ctl_funcCheckChanged;
+			AddFunctionRadio( "none", OutputFunc.None );
+			AddFunctionRadio( "static", OutputFunc.Static );
+			AddFunctionRadio( "rainbow cycle", OutputFunc.Rainbow );
+			AddFunctionRadio( "channel test", OutputFunc.ChannelTest );
+			AddFunctionRadio( "party game", OutputFunc.PartyGame );
+			AddFunctionRadio( "party no game", OutputFunc.PartyNoGame );
+			AddFunctionRadio( "christmas", OutputFunc.Christmas );
+			AddFunctionRadio( "window test", OutputFunc.WindowTest );
+		}
 
-			cFuncRainbow.Tag = OutputFunc.Rainbow;
-			cFuncRainbow.CheckedChanged += ctl_funcCheckChanged;
+		void CUpdatesPerSecond_ValueChanged( object sender, EventArgs e ) {
+			mFrameTimer.Interval = (int)( 1000 / cUpdatesPerSecond.Value );
+		}
 
-			cFuncChannelTest.Tag = OutputFunc.ChannelTest;
-			cFuncChannelTest.CheckedChanged += ctl_funcCheckChanged;
-
-			cFuncPartyGame.Tag = OutputFunc.PartyGame;
-			cFuncPartyGame.CheckedChanged += ctl_funcCheckChanged;
-
-			cFuncPartyNoGame.Tag = OutputFunc.PartyNoGame;
-			cFuncPartyNoGame.CheckedChanged += ctl_funcCheckChanged;
-
-			cFuncChristmas.Tag = OutputFunc.Christmas;
-			cFuncChristmas.CheckedChanged += ctl_funcCheckChanged;
+		void AddFunctionRadio( string text, OutputFunc func ) {
+			var r = new RadioButton {
+				Text = text,
+				Tag = func,
+				Checked = ( 0 == cFuncFlow.Controls.Count ),
+				AutoSize = true
+			};
+			r.CheckedChanged += ctl_funcCheckChanged;
+			cFuncFlow.Controls.Add( r );
 		}
 
 		private void CAutoHunt_CheckedChanged( object sender, EventArgs e ) {
@@ -123,20 +154,16 @@
 			mGlimDevices.Add( gs103.DeviceName, gs103 );
 			mGlimDevices.Add( gs104.DeviceName, gs104 );
 
-			mGlimPixelMapContiguous = CreateCompletePixelMap();
+			mProgramChristmas = new ProgramChristmas( gs103.PixelData, gs104.PixelData, gs101.PixelData );
 
-			mProgramChristmas = new ProgramChristmas( gs103, gs104, gs101 );
-
-			mPixelMapStars = new GlimDeviceMap { gs102 }.Compile();
-			mPixelMapRedGun = new GlimDeviceMap { { gs103, 0, 100 } }.Compile();
-			mPixelMapBlueGun = new GlimDeviceMap { { gs104, 0, 100 } }.Compile();
-			mPixelMapBarrel = new GlimDeviceMap { { gs103, 100, 50 } }.Compile();
-			mPixelMapPerimeter = new GlimDeviceMap { { gs103, 0, 100 }, { gs104, 100, -100 } }.Compile();
+			mPixelMapStars = new GlimPixelMap.Factory { gs102.PixelData };
+			mPixelMapRedGun = new GlimPixelMap.Factory { { gs103.PixelData, 0, 100 } };
+			mPixelMapBlueGun = new GlimPixelMap.Factory { { gs104.PixelData, 0, 100 } };
+			mPixelMapBarrel = new GlimPixelMap.Factory { { gs103.PixelData, 100, 50 } };
+			mPixelMapPerimeter = new GlimPixelMap.Factory { { gs103.PixelData, 0, 100 }, { gs104.PixelData, 100, -100 } };
 
 			mFxPerimeterRainbow = new FxScale( new FxRainbow() );
-			mFxPerimeterRainbow.Initialize( mPixelMapPerimeter.PixelCount );
-			mFxStarlight = new FxScale( new FxStarlightTwinkle { BaseColor = Color.Yellow } ) { SaturationScale = 0.3 };
-			mFxStarlight.Initialize( mPixelMapStars.PixelCount );
+			mFxStarlight = new FxScale( new FxStarlightTwinkle { BaseColor = Color.Yellow } ) { Saturation = 0.3 };
 
 			// comets!
 			FxComet t;
@@ -168,7 +195,6 @@
 		private void CbFxCannonBallRed_Finished( object sender, EventArgs e ) {
 			SendButtonGlimmer( mGlimRedGun );
 			if( GameState.SynchronizedShotsFired == mGameState ) {
-				mFxBarrel.Initialize( 50 );
 				mGameState = GameState.BarrelShotFired;
 			}
 		}
@@ -176,7 +202,6 @@
 		private void CbFxCannonBallBlue_Finished( object sender, EventArgs e ) {
 			SendButtonGlimmer( mGlimBlueGun );
 			if( GameState.SynchronizedShotsFired == mGameState ) {
-				mFxBarrel.Initialize( 50 );
 				mGameState = GameState.BarrelShotFired;
 			}
 		}
@@ -214,45 +239,37 @@
 		/// <param name="hostname">name of the device to find or create</param>
 		/// <param name="sourceAddress">optional, if not null, authoritative sourceAddress (has been seen at this address)</param>
 		/// <returns></returns>
-		GlimDescriptor FindOrCreateDevice( string hostname, IPEndPoint sourceAddress ) {
-			var g = FindDevice( hostname );
+		GlimDescriptor FindOrCreateDevice( IGlimDevice d ) {
+			var g = FindDevice( d.Hostname );
 			if( null == g ) {
-				g = new GlimDescriptor( hostname ) { IPEndPoint = sourceAddress, PixelCount = PixelCountPerString };
-				mGlimDevices.Add( hostname, g );
+				g = new GlimDescriptor( g.Hostname ) { PixelCount = PixelCountPerString };
+				mGlimDevices.Add( g.Hostname, g );
 			}
-			else {
-				g.IPEndPoint = sourceAddress;
-			}
+			g.UpdateFromNetworkData( d );
 			return g;
 		}
 
 		void ColourCycling_Tick( object sender, EventArgs e ) {
 			// not every function has a tick response
 			switch( mFunc ) {
-				case OutputFunc.Rainbow:
-					// Hue is unique in that it's circular
-					mCyclingColor.Hue += HueDuty;
-					cColourSelected.BackColor = mCyclingColor;
-					// map a smooth rainbow across them all
-					mGlimPixelMapContiguous.Write( GenerateVectorColourWheel( mCyclingColor ) );
-					TransmitAllPackets();
+				case OutputFunc.None:
 					break;
+				case OutputFunc.Rainbow:
+				case OutputFunc.Static:
 				case OutputFunc.ChannelTest:
-					if( Color.Red == cColourSelected.BackColor )
-						cColourSelected.BackColor = Color.FromArgb( 0, 0xff, 0 ); // Color.Green;
-					else if( Color.Blue == cColourSelected.BackColor )
-						cColourSelected.BackColor = Color.Red;
-					else
-						cColourSelected.BackColor = Color.Blue;
-					SendColour( cColourSelected.BackColor );
+				case OutputFunc.Christmas:
+					mCurrentProgram.Luminance = LuminanceMultiplier;
+					mCurrentProgram.Saturation = SaturationMultiplier;
+					mCurrentProgram.Execute();
+					TransmitAllPackets();
 					break;
 				case OutputFunc.PartyGame:
 				case OutputFunc.PartyNoGame:
-					var ctx = new FxContextUnbounded( mPartyStart );
-					mFxPerimeterRainbow.LuminanceScale = PerimeterLuminanceMultiplier;
-					mFxPerimeterRainbow.SaturationScale = SaturationMultiplier;
+					var ctx = new FxContextContinuous( mPartyStart );
+					mFxPerimeterRainbow.Luminance = PerimeterLuminanceMultiplier;
+					mFxPerimeterRainbow.Saturation = SaturationMultiplier;
 					mPixelMapPerimeter.Write( mFxPerimeterRainbow.Execute( ctx ) );
-					mFxStarlight.LuminanceScale = LuminanceStarlightMultiplier;
+					mFxStarlight.Luminance = LuminanceStarlightMultiplier;
 					mPixelMapStars.Write( mFxStarlight.Execute( ctx ) );
 
 					if( mGlimRedGun.FxFloodFill.IsRunning ) {
@@ -267,10 +284,6 @@
 					AdjustForGameState( ctx );
 					TransmitAllPackets();
 					break;
-				case OutputFunc.Christmas:
-					mProgramChristmas.Execute( LuminanceMultiplier, SaturationMultiplier );
-					TransmitAllPackets();
-					break;
 			}
 		}
 
@@ -278,12 +291,7 @@
 			var dlg = new ColorDialog { Color = cColourSelected.BackColor };
 			if( DialogResult.OK == dlg.ShowDialog( this ) ) {
 				cColourSelected.BackColor = dlg.Color;
-				SendColour( cColourSelected.BackColor );
 			}
-		}
-
-		private void ColourResend_Click( object sender, EventArgs e ) {
-			SendColour( cColourSelected.BackColor );
 		}
 
 		private void Hunt_Click( object sender, EventArgs e ) {
@@ -314,11 +322,8 @@
 						e.dBm
 					) );
 					int sc = mGlimDevices.Count;
-					var g = FindOrCreateDevice( e.Hostname, e.SourceAddress );
-					UpdateDevice( g, e.Uptime );
-					if( mGlimDevices.Count != sc ) {
-						mGlimPixelMapContiguous = CreateCompletePixelMap();
-					}
+					var g = FindOrCreateDevice( e );
+					SafeCall( UIRebuildGlimList );
 					// reply if appropriate
 					if( NetworkMessage.Ping == msg ) {
 						SendPong( e.SourceAddress );
@@ -331,15 +336,6 @@
 			}
 		}
 
-		private void UpdateDevice( GlimDescriptor g, TimeSpan uptime ) {
-			if( 0 == g.BootCount || uptime.TotalSeconds < g.BootTime.TotalSeconds ) {
-				g.BootCount ++;
-				PrintLine( "added to display list or device crashed" );
-				SafeCall( UIRebuildGlimList );
-			}
-			g.BootTime = uptime;
-		}
-
 		void NetworkPingReceived( object sender, NetworkPingEventArgs e ) {
 			ProcessPingPong( NetworkMessage.Ping, e );
 		}
@@ -350,10 +346,13 @@
 
 		void NetworkButtonStatusReceived( object sender, NetworkButtonStatusEventArgs e ) {
 			var g = FindDevice( e.SourceAddress );
+			if( null == g ) {
+				PrintLine( string.Format( "mystery button press received from {0}: Button.{1}", e.SourceAddress.Address, e.ButtonStatus ) );
+			}
 			PrintLine( string.Format( "{0}: Button.{1}", g.DeviceName, e.ButtonStatus ) );
 
-			if( OutputFunc.Christmas == mFunc ) {
-				mProgramChristmas.ButtonStateChanged( e.ButtonStatus );
+			if( null != mCurrentProgram ) {
+				mCurrentProgram.ButtonStateChanged( g, e.ButtonStatus );
 				return;
 			}
 
@@ -423,13 +422,13 @@
 
 		/// <summary>create a contiguous pixel map of all pixels</summary>
 		/// <returns>the complete map</returns>
-		GlimPixelMap CreateCompletePixelMap() {
-			GlimPixelMap map = new GlimPixelMap();
+		IGlimPixelMap CreateCompletePixelMap() {
+			var f = new GlimPixelMap.Factory();
 			// create a contiguous pixel map
 			foreach( var ep in mGlimDevices ) {
-				map.Add( ep.Value.PixelData );
+				f.Add( ep.Value.PixelData );
 			}
-			return map;
+			return f.Compile();
 		}
 
 		double PerimeterLuminanceMultiplier {
@@ -452,7 +451,7 @@
 			}
 			double lumscale = 0.0;
 			if( GameState.CoolDown == mGameState ) {
-				mPixelMapBarrel.Write( InfiniteColor( Color.Black ) );
+				mPixelMapBarrel.Write( ProgramDefault.InfiniteColor( Color.Black ) );
 				mPixelMapStars.Write( mFxCannonTwinkle.Execute( ctx ) );
 				// take 2 seconds to return to full glow
 				lumscale = ( ( DateTime.Now - mGameCoolDownStart ).TotalSeconds - 1 ) / 2;
@@ -479,8 +478,8 @@
 			ColorReal max;
 			ColorReal onHeld;
 			if( g.PartyColor.HasValue && null != g.IPEndPoint ) {
-				if( ( OutputFunc.PartyGame == mFunc && !g.FxFloodFill.IsRunning && GameState.Null == mGameState ) ||
-					OutputFunc.Christmas == mFunc ) {
+				bool flooding = ( null == g.FxFloodFill ? false : g.FxFloodFill.IsRunning );
+				if( ( OutputFunc.PartyGame == mFunc && !flooding && GameState.Null == mGameState ) || OutputFunc.Christmas == mFunc ) {
 					min = g.PartyColor.Value;
 					min.Luminance = 0.1;
 					max = g.PartyColor.Value;
@@ -495,27 +494,6 @@
 				}
 				mNetwork.SendButtonColor( g.IPEndPoint, min, max, 1024, onHeld );
 			}
-		}
-
-		IEnumerable<Color> GenerateVectorColourWheel( Color start ) {
-			ColorReal rc = start;
-			rc.Luminance *= LuminanceMultiplier;
-			rc.Saturation *= SaturationMultiplier;
-			while( true ) {
-				yield return rc;
-				rc.Hue -= HueStride;
-			}
-		}
-
-		IEnumerable<Color> InfiniteColor( Color clr ) {
-			while( true ) {
-				yield return clr;
-			}
-		}
-
-		void SendColour( Color clr ) {
-			mGlimPixelMapContiguous.Write( InfiniteColor( clr ) );
-			TransmitAllPackets();
 		}
 
 		delegate void SafeCallDelegate();
@@ -541,30 +519,29 @@
 
 		void ctl_funcCheckChanged( object sender, EventArgs e ) {
 			var rb = sender as RadioButton;
-			if( !rb.Checked )
+			if( !rb.Checked ) {
 				return;
+			}
 
 			mFunc = (OutputFunc)rb.Tag;
-			mCyclingTimer.Stop();
 
 			switch( mFunc ) {
 				case OutputFunc.Static:
-					// nothing
-					mCyclingTimer.Stop();
+					mCurrentProgram = new ProgramStatic( cColourSelected, CreateCompletePixelMap() );
 					break;
 				case OutputFunc.ChannelTest:
-					mCyclingTimer.Interval = ChannelTestTick;
-					mCyclingTimer.Start();
-					break;
-				case OutputFunc.Rainbow:
-				case OutputFunc.PartyGame:
-				case OutputFunc.PartyNoGame:
-					mCyclingTimer.Interval = SmoothTick;
-					mCyclingTimer.Start();
+					mCurrentProgram = new ProgramChannelTest( cColourSelected, CreateCompletePixelMap() );
 					break;
 				case OutputFunc.Christmas:
-					mCyclingTimer.Interval = SmoothTick;
-					mCyclingTimer.Start();
+					mCurrentProgram = mProgramChristmas;
+					break;
+				case OutputFunc.Rainbow:
+					mCurrentProgram = new ProgramRainbow( CreateCompletePixelMap(), 94 / 3, 8 );
+					break;
+				case OutputFunc.PartyGame:
+				case OutputFunc.PartyNoGame:
+				default:
+					mCurrentProgram = null;
 					break;
 			}
 			foreach( var g in AllSeenDevices() ) {

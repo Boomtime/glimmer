@@ -9,17 +9,21 @@
 		readonly uint SeedStripe = 0x7f123abc;
 		HashAlgorithm mSeedGen = MD5.Create();
 
-		public FxStarlightTwinkle() {
-			BaseColor = Color.White;
-			LuminanceMinima = 0.00;
-			LuminanceMaxima = 0.40;
-			SpeedFactor = 1.0;
-		}
+		/// <summary>base colour of starlight</summary>
+		[Configurable]
+		public Color BaseColor = Color.White;
 
-		public Color BaseColor { get; set; }
-		public double LuminanceMinima { get; set; }
-		public double LuminanceMaxima { get; set; }
-		public double SpeedFactor { get; set; }
+		/// <summary>minimum twinkle luma</summary>
+		[Configurable]
+		public double LuminanceMinima = 0.00;
+
+		/// <summary>maximum twinkle luma</summary>
+		[Configurable]
+		public double LuminanceMaxima = 0.40;
+
+		/// <summary>speed divisor</summary>
+		[ConfigurableDouble( Minimum = 0.1, Maximum = 5.0 )]
+		public double SpeedFactor = 1.0;
 
 		public bool IsRunning => true;
 
@@ -27,10 +31,6 @@
 		double GetPixelHash( int pixel ) {
 			var res = mSeedGen.ComputeHash( BitConverter.GetBytes( SeedStripe ^ (uint)pixel ) );
 			return (double)BitConverter.ToUInt32( res, 0 ) / (double)UInt32.MaxValue;
-		}
-
-		public void Initialize( int pixelCount ) {
-			// nothing to do
 		}
 
 		public IEnumerable<Color> Execute( IFxContext ctx ) {

@@ -14,10 +14,6 @@
 
 		public bool IsRunning => true;
 
-		public void Initialize( int pixelCount ) {
-			// nothing to do
-		}
-
 		public IEnumerable<Color> Execute( IFxContext ctx ) {
 			var secondsPerCycle = ( 1.0 / CyclesPerSecond );
 			var posBase = ( ctx.TimeNow.TotalSeconds % secondsPerCycle ) / secondsPerCycle * 2;

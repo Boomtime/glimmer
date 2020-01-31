@@ -5,176 +5,156 @@
 	using System.Collections;
     using System.Drawing;
 
-    /// <summary>factory initializer for IGlimPixelMap</summary>
-    class GlimDeviceMap : IEnumerable<IGlimDevice> {
-
-		struct GlimDeviceMapElement {
-			/// <summary>Packet destination when writing/sourcing pixel data</summary>
-			public GlimDevice Device;
-
-			/// <summary>first addressable pixel</summary>
-			public int PixelStart;
-
-			/// <summary>number of contiguous addressable pixels</summary>
-			public int PixelCount;
-		}
-
-		readonly List<GlimDeviceMapElement> mDeviceList = new List<GlimDeviceMapElement>();
-
-		/// <summary>add GlimDevice with limit parameters</summary>
-		/// <param name="device"></param>
-		/// <param name="pixelStart"></param>
-		/// <param name="pixelCount"></param>
-		public void Add( GlimDevice device, int pixelStart, int pixelCount ) {
-			mDeviceList.Add( new GlimDeviceMapElement { Device = device, PixelStart = pixelStart, PixelCount = pixelCount } );
-		}
-		public void Add( GlimDevice device ) {
-			Add( device, 0, device.PixelCount );
-		}
-		public void Add( params GlimDevice[] devices ) {
-			foreach( var d in devices ) { 
-				Add( d );
-			}
-		}
-
-		/// <summary>compile to a GlimPixelMap, the resulting map is unaffected by further changes to this</summary>
-		/// <returns></returns>
-		public GlimPixelMap Compile() {
-			var res = new GlimPixelMap();
-			foreach( var e in mDeviceList ) {
-				res.Add( e.Device.PixelData, e.PixelStart, e.PixelCount );
-			}
-			return res;
-		}
-
-		public IEnumerator<IGlimDevice> GetEnumerator() {
-			foreach( var e in mDeviceList )
-				yield return e.Device;
-		}
-
-		IEnumerator IEnumerable.GetEnumerator() {
-			foreach( var e in mDeviceList ) {
-				yield return e.Device;
-			}
-		}
-	}
-
 	class GlimPixelMap : IGlimPixelMap {
 
-		enum GlimPixelMapDirection {
-			Forwards,
-			Backwards,
-		}
-
-		class GlimPixelMapElement {
-			// @todo: should be two of these, one forwards other backwards rather than checking all the time
-
+		class Element {
 			/// <summary>Packet destination when writing/sourcing pixel data</summary>
 			public readonly IGlimPacket Packet;
 
 			/// <summary>first addressable pixel</summary>
-			public readonly int PixelStart;
+			protected readonly int PixelStart;
 
 			/// <summary>number of contiguous addressable pixels</summary>
 			public readonly int PixelCount;
 
-			/// <summary>how are pixels addressed</summary>
-			public readonly GlimPixelMapDirection Direction;
-
-			public GlimPixelMapElement( IGlimPacket packet, int pixelStart, int pixelCount ) {
+			public Element( IGlimPacket packet, int pixelStart, int pixelCount ) {
 				Packet = packet;
-				if( pixelCount < 0 ) {
-					PixelStart = pixelStart + pixelCount;
-					PixelCount = 0 - pixelCount;
-					Direction = GlimPixelMapDirection.Backwards;
-				}
-				else {
-					PixelStart = pixelStart;
-					PixelCount = pixelCount;
-					Direction = GlimPixelMapDirection.Forwards;
-				}
+				PixelStart = pixelStart;
+				PixelCount = pixelCount;
 			}
 
 			/// <summary>writes colour data into the map in the configured direction</summary>
 			/// <param name="src">colour data to consume</param>
 			/// <returns>true if all configured destination pixels were filled</returns>
-			public bool Write( IEnumerator<Color> src ) {
-				if( GlimPixelMapDirection.Forwards == Direction ) {
-					int pos = PixelStart;
-					int limit = PixelStart + PixelCount;
-					while( pos < limit ) {
-						if( !src.MoveNext() ) {
-							return false;
-						}
-						Packet.SetPixel( pos, src.Current );
-						pos++;
+			public virtual bool Write( IEnumerator<Color> src ) {
+				int pos = PixelStart;
+				int limit = PixelStart + PixelCount;
+				while( pos < limit ) {
+					if( !src.MoveNext() ) {
+						return false;
 					}
-				}
-				else {
-					int pos = PixelStart + PixelCount;
-					int limit = PixelStart;
-					while( pos > limit ) {
-						if( !src.MoveNext() ) {
-							return false;
-						}
-						pos--;
-						Packet.SetPixel( pos, src.Current );
-					}
+					Packet.SetPixel( pos, src.Current );
+					pos++;
 				}
 				return true;
 			}
+		}
 
-			public IEnumerable<Color> Read() {
-				if( GlimPixelMapDirection.Forwards == Direction ) {
-					for( var pixel = PixelStart ; pixel < PixelStart + PixelCount ; pixel++ ) {
-						yield return Packet[pixel];
+		class ElementBackwards : Element {
+			public ElementBackwards( IGlimPacket packet, int pixelStart, int pixelCount )
+				: base( packet, pixelStart, pixelCount ) {
+			}
+			public override bool Write( IEnumerator<Color> src ) {
+				int pos = PixelStart + PixelCount;
+				int limit = PixelStart;
+				while( pos > limit ) {
+					if( !src.MoveNext() ) {
+						return false;
 					}
+					pos--;
+					Packet.SetPixel( pos, src.Current );
+				}
+				return true;
+			}
+		}
+
+		public class Factory : IEnumerable<IGlimPacket> {
+
+			readonly List<Element> mPacketList = new List<Element>();
+
+			/// <summary>add packet with limit parameters</summary>
+			/// <param name="packet"></param>
+			/// <param name="pixelStart"></param>
+			/// <param name="pixelCount"></param>
+			public void Add( IGlimPacket packet, int pixelStart, int pixelCount ) {
+				if( pixelStart < 0 || pixelStart + pixelCount > packet.PixelCount ) {
+					throw new ArgumentOutOfRangeException( "pixelStart or pixelCount are beyond the packet device capabilities" );
+				}
+				if( pixelCount < 0 ) {
+					mPacketList.Add( new ElementBackwards( packet, pixelStart + pixelCount, 0 - pixelCount ) );
 				}
 				else {
-					for( var pixel = PixelStart + PixelCount - 1 ; pixel >= PixelStart ; pixel-- ) {
-						yield return Packet[pixel];
-					}
+					mPacketList.Add( new Element( packet, pixelStart, pixelCount ) );
+				}
+			}
+			public void Add( IGlimPacket packet ) {
+				Add( packet, 0, packet.PixelCount );
+			}
+			public void Add( params IGlimPacket[] packets ) {
+				foreach( var p in packets ) {
+					Add( p );
+				}
+			}
+			public void Add( IEnumerable<IGlimPacket> packets ) {
+				foreach( var p in packets ) {
+					Add( p );
+				}
+			}
+
+			/// <summary>compile to a GlimPixelMap, the resulting map is unaffected by further changes to this</summary>
+			/// <returns></returns>
+			public static implicit operator GlimPixelMap( Factory f ) {
+				return new GlimPixelMap( f.mPacketList );
+			}
+
+			public IGlimPixelMap Compile() {
+				return new GlimPixelMap( mPacketList );
+			}
+
+			public IEnumerator<IGlimPacket> GetEnumerator() {
+				foreach( var e in mPacketList )
+					yield return e.Packet;
+			}
+
+			IEnumerator IEnumerable.GetEnumerator() {
+				foreach( var e in mPacketList ) {
+					yield return e.Packet;
 				}
 			}
 		}
 
-		readonly List<GlimPixelMapElement> packetList = new List<GlimPixelMapElement>();
+		readonly List<Element> mPacketList;
+
+		GlimPixelMap( List<Element> list ) {
+			mPacketList = list;
+		}
+
+		public GlimPixelMap() {
+			mPacketList = new List<Element>();
+		}
 
 		public void Write( IEnumerable<Color> src ) {
 			var ce = src.GetEnumerator();
-			foreach( var pi in packetList ) {
+			foreach( var pi in mPacketList ) {
 				if( !pi.Write( ce ) ) {
 					break;
 				}
 			}
 		}
 
-		public IEnumerable<Color> Read() {
-			foreach( var p in packetList ) {
-				foreach( var c in p.Read() ) {
-					yield return c;
-				}
-			}
-		}
-
 		public int PixelCount {
 			get {
-				return packetList.Aggregate( 0, ( sum, cur ) => sum += cur.PixelCount );
+				return mPacketList.Aggregate( 0, ( sum, cur ) => sum += cur.PixelCount );
 			}
 		}
 
 		public void Add( IGlimPacket packet, int pixelStart, int pixelCount ) {
-			if( pixelStart < 0 || pixelStart + pixelCount > packet.Device.PixelCount ) {
+			if( pixelStart < 0 || pixelStart + pixelCount > packet.PixelCount ) {
 				throw new ArgumentOutOfRangeException( "pixelStart or pixelCount are beyond the packet device capabilities" );
 			}
-			packetList.Add( new GlimPixelMapElement( packet, pixelStart, pixelCount ) );
+			if( pixelCount < 0 ) {
+				mPacketList.Add( new ElementBackwards( packet, pixelStart + pixelCount, 0 - pixelCount ) );
+			}
+			else {
+				mPacketList.Add( new Element( packet, pixelStart, pixelCount ) );
+			}
 		}
 
 		public void Add( IGlimPacket packet ) {
 			if( null == packet ) {
 				throw new ArgumentNullException( "packet argument must not be null" );
 			}
-			Add( packet, 0, packet.Device.PixelCount );
+			Add( packet, 0, packet.PixelCount );
 		}
 	}
 }

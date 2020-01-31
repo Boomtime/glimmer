@@ -27,7 +27,13 @@ void halt( void );
 void reboot( void );
 
 namespace cpu {
-	void sample( uint& ms_busy, uint& ms_free );
+	typedef struct {
+		uint user;
+		uint free;
+		uint system;
+	} stats_t;
+	// cpu usage stats, a base of 100 would make the stats a percentage
+	stats_t sample( uint base_scale = 100 );
 } // namespace cpu
 
 

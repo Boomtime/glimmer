@@ -23,4 +23,9 @@ void send_button_state( BUTTON::state );
 
 bool is_connected( int* dbm = 0 );
 
+namespace counters {
+	uint sent( void );
+	uint recv( void );
+}
+
 } } // namespace network::client

@@ -42,6 +42,20 @@ static msg_btnc_cb* cb_btnc;
 
 } // namespace local
 
+namespace counters {
+	static struct {
+		uint recv;
+		uint sent;
+	} data = { 0, 0 };
+
+	uint sent( void ) {
+		return data.sent;
+	}
+	uint recv( void ) {
+		return data.recv;
+	}
+}
+
 
 static bool read_rgb( rgb_t& rgb ) {
 	if( 3 > local::socket.available() ) {
@@ -63,7 +77,13 @@ static bool read_short( short& s ) {
 	return true;
 }
 
-static void write_integer( int to_write ) {
+static void write_byte( uint8_t b ) {
+	counters::data.sent ++;
+	local::socket.write( b );
+}
+
+static void write_uint( uint to_write ) {
+	counters::data.sent += 4;
 #	define WRITE_BYTE(b) local::socket.write( uint8_t( ( to_write >> b ) & 0xff ) )
 	WRITE_BYTE( 24 );
 	WRITE_BYTE( 16 );
@@ -72,23 +92,30 @@ static void write_integer( int to_write ) {
 #	undef WRITE_BYTE
 }
 
+static void write_string( const String& s ) {
+	counters::data.sent += s.length() + 1;
+	local::socket.write( uint8_t( s.length() ) );
+	local::socket.write( (uint8_t*)( s.c_str() ), s.length() );
+}
+
 static void transmit_ident( MSG::message msg_type, IPAddress remote_ip, uint16_t remote_port ) {
-	uint b, f;
 	String hostname = WiFi.hostname();
-	// <ping/pong> <hw-type> <hostname> <uptime>
-	// ping/pong are byte
+	// <ping/pong> <hw-type> <hostname> <uptime> <cpu> <wifi-dbm> <net-recv>
+	// ping/pong are byte, 
 	// hw-type is byte
 	// hostname is a pascal string
-	// uptime is a big-endian int32
+	// uptime is a big-endian uint32
+	// cpu is a byte
+	// wifi-dbm is a byte
+	// net-recv is big-endian uint32
 	local::socket.beginPacket( remote_ip, remote_port );
-	local::socket.write( uint8_t( msg_type ) );
-	local::socket.write( uint8_t( HARDWARE::GLIM_V4 ) );
-	local::socket.write( uint8_t( hostname.length() ) );
-	local::socket.write( (uint8_t*)( hostname.c_str() ), hostname.length() );
-	write_integer( glim::uptime() );
-	kernel::cpu::sample( b, f );
-	local::socket.write( uint8_t( 255 * b / ( b + f ) ) );
-	local::socket.write( local::is_connected ? uint8_t( 255 + WiFi.RSSI() ) : 255 );
+	write_byte( uint8_t( msg_type ) );
+	write_byte( uint8_t( HARDWARE::GLIM_V4 ) );
+	write_string( hostname );
+	write_uint( millis() / 1000 ); // @todo: fix 49 day bug
+	write_byte( uint8_t( kernel::cpu::sample( 255 ).user ) );
+	write_byte( local::is_connected ? uint8_t( 255 + WiFi.RSSI() ) : 255 );
+	write_uint( counters::data.recv );
 	local::socket.endPacket();
 }
 
@@ -123,6 +150,7 @@ static bool check_process_msg( void ) {
 	if( 0 >= packetSize ) {
 		return false;
 	}
+	counters::data.recv += packetSize;
 	uint8_t msg = local::socket.read();
 	switch( msg ) {
 	case MSG::RGB:
@@ -206,7 +234,7 @@ KERNEL_LOOP_DEFINE( network_client ) {
 		local::is_connected = false;
 	}
 
-	return 20;
+	return 10;
 }
 
 
@@ -281,9 +309,10 @@ void on_msg_btnc( msg_btnc_cb* cb ) {
 
 void send_button_state( BUTTON::state s ) {
 	// <btns> <btn-state>
+	DEBUG_SPRINT( "send_button_state(): %s", s == BUTTON::DOWN ? "DOWN" : ( s == BUTTON::UP ? "UP" : "HELD" ) );
 	local::socket.beginPacket( local::server_ip, local::server_port );
-	local::socket.write( uint8_t( MSG::BTNS ) );
-	local::socket.write( uint8_t( s ) );
+	write_byte( uint8_t( MSG::BTNS ) );
+	write_byte( uint8_t( s ) );
 	local::socket.endPacket();
 }
 

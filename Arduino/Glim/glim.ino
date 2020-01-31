@@ -47,7 +47,7 @@ static struct button_s {
 	uint period;
 	rgb_t held;
 	int down_tick_count;
-	//net::BUTTON::state state;
+	net::BUTTON::state state; // @todo: remove?
 } button = { false };
 
 #define SYSTEM_LAMP_GLIMMER_PERIOD 2000
@@ -78,12 +78,6 @@ static bool is_deadman( void ) {
 #define deadman_check() if( glim::is_deadman() ) return
 
 
-// @todo: check for rollover
-int uptime( void ) {
-	//static uint last_check = 0;
-	return int( millis() / 1000 );
-}
-
 
 /**************************************************/
 
@@ -91,15 +85,23 @@ int uptime( void ) {
 KERNEL_LOOP_DEFINE( debug_metrics_print ) {
 	DEBUG_TRACE( debug_metrics_print );
 	static uint target_time = 0;
-	uint b, f;
+	static struct { uint recv; uint sent; } nettraffic = { 0, 0 };
+	kernel::cpu::stats_t cpu;
 	bool connected;
 	int strength = -200;
 	connected = net::is_connected( &strength );
-	kernel::cpu::sample( b, f );
-	if( 0 == ( b + f ) ) {
+	cpu = kernel::cpu::sample( 1000 ); // default sample precision is percentage
+	if( 0 == cpu.user && 0 == cpu.free && 0 == cpu.system ) {
 		return 100; // skip until we get a valid sample
 	}
-	DEBUG_SPRINT( ">>> cpu: %i%%, heap: %i bytes, %s", 100 * b / ( b + f ), ESP.getFreeHeap(), connected ? va( "wifi @ %i dbm", strength ) : "no wifi" );
+	const char* wifi = "no wifi";
+	if( connected ) {
+		wifi = va( "wifi @ %i dbm, %i tx/s, %i rx/s", strength, ( net::counters::sent() - nettraffic.sent ) / 5, ( net::counters::recv() - nettraffic.recv ) / 5 );
+		nettraffic.sent = net::counters::sent();
+		nettraffic.recv = net::counters::recv();
+	}
+	DEBUG_SPRINT( ">>> cpu.user: %i.%i%%, cpu.system: %i.%i%%, heap: %i bytes, %s",
+		cpu.user / 10, cpu.user % 10, cpu.system / 10, cpu.system % 10, ESP.getFreeHeap(), wifi );
 	do {
 		target_time += 5000;
 	} while( target_time <= millis() );
@@ -146,18 +148,21 @@ KERNEL_LOOP_DEFINE( button_glimmer ) {
 	}
 	// deal with events that occurred while we were sleeping (and debounce)
 	bool was_button_interrupt = local::button_interrupt_flag && 0 == local::button.down_tick_count;
+	#ifdef DEBUG_BUILD
+	if( local::button_interrupt_flag && !was_button_interrupt ) {
+		DEBUG_PRINT( "button_glimmer(): (de)bounced" );
+	}
+	#endif
+	local::button_interrupt_flag = false;
 	if( was_button_interrupt ) {
 		net::send_button_state( net::BUTTON::DOWN );
 		commit_button_lamp_spark();
+		local::button.down_tick_count = 1;
 	}
 	// read current state and send off those conditions
 	if( 0 == digitalRead( PIN::BUTTON ) ) {
 		// down... and was it last time too?
-		if( 0 == local::button.down_tick_count ) {
-			net::send_button_state( net::BUTTON::DOWN );
-			commit_button_lamp_spark();
-		}
-		else if( 5 <= local::button.down_tick_count ) {
+		if( 10 <= local::button.down_tick_count ) {
 			net::send_button_state( net::BUTTON::HELD );
 			local::button.down_tick_count = 1;
 		}
@@ -165,16 +170,12 @@ KERNEL_LOOP_DEFINE( button_glimmer ) {
 			local::button.down_tick_count ++;
 		}
 	}
-	else {
+	else if( 0 < local::button.down_tick_count ) {
 		// up..
-
-	}
-	if( net::BUTTON::UP != local::button.state || was_button_interrupt ) {
+		local::button.down_tick_count = 0;
 		net::send_button_state( net::BUTTON::UP );
-		local::button.state = net::BUTTON::UP;
 		commit_button_lamp_glimmer();
 	}
-	local::button_interrupt_flag = false;
 	return 10;
 }
 
@@ -272,6 +273,5 @@ void setup() {
 void loop() {
 	deadman_check();
 	DEBUG_TRACE( loop );
-	uptime(); // called just to ensure it gets checked - @todo: really?
 	kernel::loop();
 }

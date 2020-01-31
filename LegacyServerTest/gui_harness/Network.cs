@@ -24,29 +24,6 @@
 		ButtonColor = 6,
 	}
 
-	/// <summary>hardware type byte</summary>
-	public enum HardwareType : byte {
-		Server = 1,
-		GlimV2 = 2,
-		GlimV3 = 3,
-		GlimV4 = 4,
-	}
-
-	/// <summary>glim device button status byte</summary>
-	public enum ButtonStatus : byte {
-		Down = 1,
-		Held = 2,
-		Up = 3,
-	}
-
-	public enum WifiRSSI : int {
-		None = -200, // everything beyond -72dbm or unknown, not likely to get a packet through if it exists at all
-		Terrible = -87, // (down to), will get some comms, but might be tragic
-		Weak = -75, // (down to), reliable only if it's consistent
-		Good = -57, // (down to), very solid and reliable, can handle variation
-		Excellent = -30, // down to -30, on top of the router, may have caught fire
-	}
-
 	/// <summary>base class for all event args from the server, always have a IPEndPoint SourceAddress</summary>
 	class NetworkEventArgs : EventArgs {
 		protected NetworkEventArgs( IPEndPoint source ){
@@ -56,21 +33,24 @@
 	}
 
 	/// <summary>gives paramters to ping/pong events</summary>
-	class NetworkPingEventArgs : NetworkEventArgs {
-		public NetworkPingEventArgs( IPEndPoint source, HardwareType hw, string hostname, TimeSpan uptime, float cpu, int dbm ) : base( source ) {
-			HardwareType = hw;
+	class NetworkPingEventArgs : NetworkEventArgs, IGlimDevice {
+		public NetworkPingEventArgs( IPEndPoint source, HardwareType hw, string hostname, TimeSpan uptime, float cpu, int dbm, uint net_recv ) : base( source ) {
 			Hostname = hostname;
+			HardwareType = hw;
 			Uptime = uptime;
 			CPU = cpu;
 			dBm = dbm;
 			RSSI = DBMtoRSSI( dbm );
+			NetRecv = net_recv;
 		}
-		public readonly HardwareType HardwareType;
-		public readonly string Hostname;
-		public readonly TimeSpan Uptime;
-		public readonly float CPU;
-		public readonly int dBm;
-		public readonly WifiRSSI RSSI;
+		public virtual HardwareType HardwareType { get; }
+		public virtual string Hostname { get; }
+		public virtual IPEndPoint IPEndPoint => SourceAddress;
+		public virtual TimeSpan Uptime { get; }
+		public virtual float CPU { get; }
+		public virtual int dBm { get; }
+		public virtual WifiRSSI RSSI { get; }
+		public uint NetRecv { get; }
 
 		static WifiRSSI DBMtoRSSI( int dbm ) {
 			if( dbm >= (int)WifiRSSI.Excellent ) {
@@ -105,9 +85,7 @@
 		readonly DateTime mStartDatetime;
 
 		public NetworkServer( int port = DefaultPort ) {
-			mSocket = new UdpClient( port ) {
-				EnableBroadcast = true
-			};
+			mSocket = new UdpClient( port ) { EnableBroadcast = true };
 			mAsyncReceiveEnabled = false;
 			mStartDatetime = DateTime.Now;
 		}
@@ -138,10 +116,8 @@
 
 		void DataReceived( IAsyncResult ar ) {
 			var rhost = new IPEndPoint( IPAddress.Any, 0 );
-			byte[] dgram = mSocket.EndReceive( ar, ref rhost );
-
-			ProcessDatagram( rhost, dgram );
-
+			var data = mSocket.EndReceive( ar, ref rhost );
+			ProcessDatagram( rhost, new RxDatagram( data ) );
 			AsyncDatagramReceive();
 		}
 
@@ -149,28 +125,56 @@
 			mSocket.BeginReceive( DataReceived, null );
 		}
 
-		string ExtractPascalString( byte[] payload, int index, out int strend ) {
-			int count = payload[index];
+		class RxDatagram {
+			byte[] mData;
+			int mIndex;
 
-			strend = index + count + 1;
+			public RxDatagram( byte[] data ) {
+				mData = data;
+				mIndex = 0;
+			}
 
-			if( count > payload.Length - index )
-				return null;
+			public bool IsDataRemaining {
+				get { return mIndex < mData.Length; }
+			}
 
-			return Encoding.ASCII.GetString( payload, index + 1, count );
-		}
+			public byte ReadByte() {
+				if( mData.Length < mIndex + 1 ) {
+					return default;
+				}
+				return mData[mIndex++];
+			}
 
-		int ExtractInteger( byte[] dgram, int index ) {
-			int ret;
+			public uint ReadUint() {
+				uint ret;
+				if( mData.Length < mIndex + 4 ) {
+					mIndex = mData.Length;
+					return 0;
+				}
+				ret =  (uint)mData[mIndex++] << 24;
+				ret += (uint)mData[mIndex++] << 16;
+				ret += (uint)mData[mIndex++] << 8;
+				ret += (uint)mData[mIndex++];
+				return ret;
+			}
 
-			if( dgram.Length < index + 4 )
-				return 0;
-
-			ret = dgram[index] << 24;
-			ret += dgram[index + 1] << 16;
-			ret += dgram[index + 2] << 8;
-			ret += dgram[index + 3];
-			return ret;
+			public string ReadString() {
+				if( !IsDataRemaining ) {
+					return null;
+				}
+				int length = ReadByte();
+				if( 0 >= length ) {
+					return String.Empty;
+				}
+				if( length > mData.Length - mIndex ) {
+					// packet is broken, end it
+					mIndex = mData.Length;
+					return null;
+				}
+				var ret = Encoding.ASCII.GetString( mData, mIndex, length );
+				mIndex += length;
+				return ret;
+			}
 		}
 
 		/// <summary>called whenever a ping message is received</summary>
@@ -194,19 +198,19 @@
 			ButtonStatusReceived?.Invoke( this, e );
 		}
 
-		void ProcessDatagram( IPEndPoint rhost, byte[] dgram ) {
+		void ProcessDatagram( IPEndPoint rhost, RxDatagram dgram ) {
 			Debug.WriteLine( "got some data from " + rhost.Address.ToString() );
-
-			var msg = (NetworkMessage)dgram[0];
-
+			var msg = (NetworkMessage)dgram.ReadByte();
 			switch( msg ) {
 				case NetworkMessage.Ping:
 				case NetworkMessage.Pong: {
-						var hname = ExtractPascalString( dgram, 2, out int strend );
-						var uptime = TimeSpan.FromSeconds( ExtractInteger( dgram, strend ) );
-						float cpu = dgram.Length > strend + 4 ? (float)( dgram[strend + 4] ) / byte.MaxValue : 0;
-						int dbm = dgram.Length > strend + 5 ? (int)dgram[strend + 5] - byte.MaxValue : -200;
-						var args = new NetworkPingEventArgs( rhost, (HardwareType)dgram[1], hname, uptime, cpu, dbm );
+						var hw = (HardwareType)dgram.ReadByte();
+						var hname = dgram.ReadString();
+						var uptime = TimeSpan.FromSeconds( dgram.ReadUint() );
+						float cpu = (float)( dgram.ReadByte() ) / byte.MaxValue;
+						int dbm = dgram.ReadByte() - byte.MaxValue;
+						uint nrecv = dgram.ReadUint();
+						var args = new NetworkPingEventArgs( rhost, hw, hname, uptime, cpu, dbm, nrecv );
 						if( NetworkMessage.Ping == msg ) {
 							OnPingReceived( args );
 						}
@@ -217,12 +221,12 @@
 					break;
 
 				case NetworkMessage.ButtonStatus: {
-						OnButtonStatusReceived( new NetworkButtonStatusEventArgs( rhost, (ButtonStatus)dgram[1] ) );
+						OnButtonStatusReceived( new NetworkButtonStatusEventArgs( rhost, (ButtonStatus)dgram.ReadByte() ) );
 					}
 					break;
 
 				default: {
-						Debug.WriteLine( string.Format( "mystery message ({0}) received (and ignored)", dgram[0] ) );
+					Debug.WriteLine( string.Format( "mystery message ({0}) received (and ignored)", (byte)msg ) );
 					}
 					break;
 			}
@@ -238,53 +242,50 @@
 			mSocket.Send( ping, ping.Length, dst );
 		}
 
-		class DGramList : List<byte> {
-			public void AddRGB( Color c ) { Add( c.R ); Add( c.G ); Add( c.B ); }
-			public void AddGBR( Color c ) { Add( c.G ); Add( c.B ); Add( c.R ); }
+		abstract class TxDatagram : List<byte> {
+			public abstract void AddColour( Color c );
+
+			public void AddShort( short s ) {
+				Add( (byte)( ( s & 0x7F00 ) >> 8 ) );
+				Add( (byte)( s & 0xFF ) );
+			}
+
+			class TxRGB : TxDatagram {
+				public override void AddColour( Color c ) {
+					Add( c.R ); Add( c.G ); Add( c.B );
+				}
+			}
+
+			class TxGBR : TxDatagram {
+				public override void AddColour( Color c ) {
+					Add( c.G ); Add( c.B ); Add( c.R );
+				}
+			}
+
+			public static TxDatagram Create( NetworkColorOrder order ) {
+				if( NetworkColorOrder.GBR == order ) {
+					return new TxGBR();
+				}
+				return new TxRGB();
+			}
 		}
 
 		public void SendRGB( IPEndPoint dst, IEnumerable<Color> vector, NetworkColorOrder order = NetworkColorOrder.RGB ) {
-			var dgram = new DGramList();
+			var dgram = TxDatagram.Create( order );
 			dgram.Add( (byte)NetworkMessage.RGB1 );
-			if( NetworkColorOrder.GBR == order ) {
-				foreach( var c in vector ) {
-					dgram.AddGBR( c );
-				}
-			}
-			else {
-				foreach( var c in vector ) {
-					dgram.AddRGB( c );
-				}
+			foreach( var c in vector ) {
+				dgram.AddColour( c );
 			}
 			mSocket.Send( dgram.ToArray(), dgram.Count, dst );
 		}
 
 		public void SendButtonColor( IPEndPoint dst, Color min, Color max, short period, Color onHeld, NetworkColorOrder order = NetworkColorOrder.RGB ) {
-			var dgram = new DGramList();
+			var dgram = TxDatagram.Create( order );
 			dgram.Add( (byte)NetworkMessage.ButtonColor );
-
-			// low/high
-			if( NetworkColorOrder.GBR == order ) {
-				dgram.AddGBR( min );
-				dgram.AddGBR( max );
-			}
-			else {
-				dgram.AddRGB( min );
-				dgram.AddRGB( max );
-			}
-
-			// period (1024ms)
-			dgram.Add( (byte)( ( period & 0x7F00 ) >> 8 ) );
-			dgram.Add( (byte)( period & 0xFF ) );
-
-			// on-held
-			if( NetworkColorOrder.GBR == order ) {
-				dgram.AddGBR( onHeld );
-			}
-			else {
-				dgram.AddRGB( onHeld );
-			}
-
+			dgram.AddColour( min );
+			dgram.AddColour( max );
+			dgram.AddShort( period );
+			dgram.AddColour( onHeld );
 			mSocket.Send( dgram.ToArray(), dgram.Count, dst );
 		}
 	}

@@ -39,9 +39,5 @@ typedef struct rgbw_s : rgb_s {
 } rgbw_t;
 
 
-// seconds since the glim booted
-// ~68 years until wrap
-int uptime( void );
-
 } // namespace glim
 #endif // GLIM_H

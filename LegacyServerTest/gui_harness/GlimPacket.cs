@@ -5,17 +5,14 @@
 
 	/// <summary>basic implementation of a colour vector packet</summary>
 	class GlimPacket : IGlimPacket {
-		readonly IGlimDevice mDevice;
-		ColorReal[] mData;
+		readonly Color[] mData;
 
-		public GlimPacket( IGlimDevice device ) {
-			mDevice = device;
-			mData = new ColorReal[device.PixelCount];
+		public GlimPacket( int pixelCount ) {
+			PixelCount = pixelCount;
+			mData = new Color[PixelCount];
 		}
 
-		public IGlimDevice Device {
-			get { return mDevice; }
-		}
+		public int PixelCount { get; }
 
 		/// <summary>uses src-alpha to blend dst with 1 minus src-alpha</summary>
 		/// <param name="dst">destination (alpha is ignored)</param>
@@ -39,21 +36,17 @@
 		/// <param name="pixel"></param>
 		/// <param name="src"></param>
 		public void SetPixel( int pixel, Color src ) {
-			mData[pixel] = Blend( this[pixel], src );
+			mData[pixel] = Blend( mData[pixel], src );
 		}
 
 		public IEnumerable<Color> Read() {
 			foreach( var c in mData ) {
-				yield return null != c ? c.ToColor() : Color.Black;
+				yield return c;
 			}
 		}
 
 		public Color this[int pixel] {
-			get {
-				if( null == mData[pixel] )
-					mData[pixel] = new ColorReal( Color.Black );
-				return mData[pixel];
-			}
+			get { return mData[pixel]; }
 		}
 	}
 }

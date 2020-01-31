@@ -12,15 +12,10 @@
 		public int SpeedPixelsPerSecond = 60;
 
 		[ConfigurableInteger( Minimum = 1, Maximum = 50)]
-		public int PixelLength = 20;
+		public int TailPixelLength = 20;
 
 		[Configurable]
 		public Color BaseColor = Color.White;
-
-		/// <summary>will no longer floodfill</summary>
-		public void Stop() {
-			mStarted = null;
-		}
 
 		public bool IsRunning {
 			get { return mStarted.HasValue && !mFinished; }
@@ -46,7 +41,7 @@
 			// the comet running
 			TimeSpan runningTime = DateTime.Now - mStarted.Value;
 			int ballPixel = (int)( runningTime.TotalSeconds * SpeedPixelsPerSecond );
-			int cometTailStartPixel = (int)( ballPixel - PixelLength );
+			int cometTailStartPixel = (int)( ballPixel - TailPixelLength );
 			if( ballPixel > mPixelCount ) {
 				// got some remaining, but have otherwise finished
 				if( !mFinished ) {
@@ -65,7 +60,7 @@
 				}
 				else {
 					// in the comet or tail...
-					yield return new ColorReal( BaseColor ) { Luminance = (double)( pixel - cometTailStartPixel ) / PixelLength };
+					yield return new ColorReal( BaseColor ) { Luminance = (double)( pixel - cometTailStartPixel ) / TailPixelLength };
 				}
 				pixel++;
 			}

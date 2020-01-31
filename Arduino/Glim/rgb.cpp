@@ -57,7 +57,6 @@ void lamp_impl_s::set_colour( const glim::rgb_t& c ) {
 }
 
 void lamp_impl_s::set_glimmer( const glim::rgb_t& bound, uint period_ms ) {
-	DEBUG_ENTER( rgb::lamp::set_glimmer );
 	this->period = period_ms;
 	this->fade_time_target = 0;
 	this->max = this->value;

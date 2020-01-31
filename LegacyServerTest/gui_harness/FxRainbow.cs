@@ -4,31 +4,27 @@
 
 	class FxRainbow : IFx {
 
-		[ConfigurableDouble( Minimum = 0.01, Maximum = 1.0 )]
-		public double HueCyclesPerSecond = 0.08;
+		[ConfigurableDouble( Minimum = 0.1, Maximum = 60 )]
+		public double HueSecondsPerCycle = 12.5;
 
-		[ConfigurableDouble( Minimum = 0.001, Maximum = 1.0 )]
-		public double HueStridePerPixel = 0.01;
+		[ConfigurableInteger( Minimum = 2, Maximum = 5000 )]
+		public int HueCyclePixelLength = 100;
 
 		public bool IsRunning => true;
 
-		public void Initialize( int pixelCount ) {
-			// nothing to do
-		}
-
 		public IEnumerable<Color> Execute( IFxContext ctx ) {
 			ColorReal rc = Color.Red; // any RGB primary color will do as a seed
+			double hueStridePerPixel = 1.0 / HueCyclePixelLength;
 			if( ctx.TimeLength.TotalSeconds > 0.0 ) {
 				rc.Hue = ctx.TimeNow.TotalSeconds / ctx.TimeLength.TotalSeconds;
 			}
 			else {
-				var secondsPerCycle = ( 1.0 / HueCyclesPerSecond );
-				rc.Hue = ( ctx.TimeNow.TotalSeconds % secondsPerCycle ) / secondsPerCycle;
+				rc.Hue = ( ctx.TimeNow.TotalSeconds % HueSecondsPerCycle ) / HueSecondsPerCycle;
 			}
 
 			while( true ) {
 				yield return rc;
-				rc.Hue -= HueStridePerPixel;
+				rc.Hue -= hueStridePerPixel;
 			}
 		}
 	}

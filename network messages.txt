@@ -6,17 +6,18 @@
 <ping> ::= 3 <ping-payload>
 <pong> ::= 4 <ping-payload>
 <btns> ::= 5 <btn-state>
-<btnc> ::= 6 <rgb> <rgb> <short> <rgb> ; glimmer minima, maxima, period, on-held
+<btnc> ::= 6 <rgb> <rgb> <ushort> <rgb> ; glimmer minima, maxima, period, on-held
 
 
-<ping-payload> ::= <hw-type> <hostname> <uptime> <cpu> <wifi-dbm>
+<ping-payload> ::= <hw-type> <hostname> <uptime> <cpu> <wifi-dbm> <net-recv>
 <rgb-payload> ::= <rgb> | <rgb> <rgb-payload>
 <rgb> ::= <byte> <byte> <byte>
 <hw-type> ::= <server> | <glim-v2> | <glim-v3> | <glim-v4>
 <hostname> ::= <string>
-<uptime> ::= <int> ; seconds since start (~68 years before wrap)
+<uptime> ::= <uint> ; seconds since start (~68 years before wrap)
 <cpu> ::= <byte> ; 0-255 ratio of cpu used (sampled) 0 = 0%, 255 = 100%
 <wifi-dbm> ::= <byte> ; 255+dbm, higher is better, thus 250 means -5dbm, 230 means -25dbm
+<net-recv> ::= <uint> ; bytes received since power-on - loops after 4GB
 
 <btn-state> ::= 1 | 2 | 3 ; down, held, up respectively (held is sent every 100ms)
 
@@ -26,8 +27,8 @@
 <glim-v4> ::= 4  ; 1 string of WS2811
 
 <byte> ::= 0-255
-<int> ::= <byte> <byte> <byte> <byte> ; int (signed) big endian
-<short> ::= <byte> <byte> ; short (signed) big endian
+<uint> ::= <byte> <byte> <byte> <byte> ; integer (unsigned) big endian
+<ushort> ::= <byte> <byte> ; short integer (unsigned) big endian
 <string> ::= 0 | <strlen> <char-vector>
 <strlen> ::= <byte>
 <char-vector> ::= <char> | <char> <char-vector>

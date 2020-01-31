@@ -2,37 +2,36 @@
 	using System;
 	using ShadowCreatures.Glimmer;
 
-	class ProgramChristmas {
+	class ProgramChristmas : Main.IProgram {
 		readonly IGlimPixelMap mPixelMap;
-		readonly FxScale mFxTwinkle;
-		readonly FxScale mFxRainbow;
-		readonly DateTime mStart = DateTime.Now;
+		readonly FxScale mFxTwinkle = new FxScale( new FxChristmasTwinkle() );
+		readonly FxScale mFxRainbow = new FxScale( new FxRainbow() );
+		readonly DateTime mStarted = DateTime.Now;
 		bool mColourMode = false;
 
-		public ProgramChristmas( GlimDevice tree, params GlimDevice[] garland ) {
-			mPixelMap = new GlimDeviceMap { tree, garland }.Compile();
-			mFxTwinkle = new FxScale( new FxChristmasTwinkle() );
-			mFxTwinkle.Initialize( mPixelMap.PixelCount );
-			mFxRainbow = new FxScale( new FxRainbow() );
-			mFxRainbow.Initialize( mPixelMap.PixelCount );
+		public ProgramChristmas( IGlimPacket tree, params IGlimPacket[] garland ) {
+			mPixelMap = new GlimPixelMap.Factory { tree, garland }.Compile();
 		}
 
-		public void Execute( double lum, double sat ) {
-			var cctx = new FxContextUnbounded( mStart );
+		public double Luminance {
+			set { mFxRainbow.Luminance = mFxTwinkle.Luminance = value; }
+		}
+		public double Saturation {
+			set { mFxRainbow.Saturation = mFxTwinkle.Saturation = value; }
+		}
+
+		public void Execute() {
+			var cctx = new FxContextContinuous( mStarted );
 			if( mColourMode ) {
-				mFxRainbow.LuminanceScale = lum;
-				mFxRainbow.SaturationScale = sat;
 				mPixelMap.Write( mFxRainbow.Execute( cctx ) );
 			}
 			else {
-				mFxTwinkle.LuminanceScale = lum;
-				mFxTwinkle.SaturationScale = sat;
 				mPixelMap.Write( mFxTwinkle.Execute( cctx ) );
 			}
 		}
 
-		internal void ButtonStateChanged( ButtonStatus buttonStatus ) {
-			if( ButtonStatus.Up == buttonStatus ) {
+		public void ButtonStateChanged( IGlimDevice src, ButtonStatus btn ) {
+			if( ButtonStatus.Up == btn ) {
 				mColourMode = !mColourMode;
 			}
 		}

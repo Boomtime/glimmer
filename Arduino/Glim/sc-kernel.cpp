@@ -8,9 +8,27 @@ namespace cpu {
 	static struct {
 		uint last_mark;
 		uint samples;
-		uint busy_ms;
-		uint free_ms;
-	} local = { 0, 0, 0, 0 };
+		uint user_us;
+		uint free_us;
+		uint system_us;
+	} local = { 0, 0, 0, 0, 0 };
+
+	// returns the number of microseconds since this function was last called
+	static uint mark_micros( void ) {
+		uint now = micros();
+		uint ret;
+		// deal with rollover
+		if( now < local.last_mark ) {
+			DEBUG_PRINT( "cpu::mark_micros(): rollover" );
+			ret = ( ~0 - local.last_mark ) + now;
+		}
+		else {
+			ret = now - local.last_mark;
+		}
+		local.last_mark = now;
+		return ret;
+	}
+
 } // namespace cpu
 
 static struct s* head = NULL;
@@ -24,7 +42,7 @@ static uint execute( void ) {
 	struct s* ref;
 	int delay;
 	while( ref = *cur ) {
-		now = millis();
+		now = millis(); // @todo: fix 49 day bug
 		if( ref->next_systime <= now ) {
 			//DEBUG_SPRINT( "executing cb [%s]", ref->name );
 			ref->next_systime = now + ref->cb();
@@ -70,32 +88,31 @@ void detach( struct s& proc ) {
 }
 
 void setup( void ) {
-	//cpu::local.last_mark = millis();
+	// nothing to do
 }
 
 void loop( void ) {
 	DEBUG_TRACE( kernel::loop );
 
-	uint delay_ms = execute();
-
-	// record some CPU stats
-	cpu::local.busy_ms += millis() - cpu::local.last_mark;
-	cpu::local.free_ms += delay_ms;
+	cpu::local.system_us += cpu::mark_micros();
 	cpu::local.samples ++;
+
+	uint delay_ms = execute();
 
 	if( cpu::local.samples > 0x80 ) {
 		cpu::local.samples >>= 1;
-		cpu::local.busy_ms >>= 1;
-		cpu::local.free_ms >>= 1;
+		cpu::local.user_us >>= 1;
+		cpu::local.free_us >>= 1;
+		cpu::local.system_us >>= 1;
 	}
+
+	cpu::local.user_us += cpu::mark_micros();
 
 	if( delay_ms ) {
 		delay( delay_ms );
 	}
 
-	// everything from here until the end of the next loop() is counted as "busy"...
-	// @todo, could record the missing time as "steal" instead
-	cpu::local.last_mark = millis();
+	cpu::local.free_us += cpu::mark_micros();
 }
 
 // non-returning function, use to implement assertions
@@ -119,9 +136,15 @@ void reboot( void ) {
 }
 
 namespace cpu {
-void sample( uint& ms_busy, uint& ms_free ) {
-	ms_busy = local.busy_ms;
-	ms_free = local.free_ms;
+stats_t sample( uint base_scale ) {
+	stats_t ret = { 0, 0, 0 };
+	uint total_us = local.user_us + local.free_us + local.system_us;
+	if( 0 < total_us ) {
+		ret.user = ( local.user_us * base_scale ) / total_us;
+		ret.free = ( local.free_us * base_scale ) / total_us;
+		ret.system = ( local.system_us * base_scale ) / total_us;
+	}
+	return ret;
 }
 } // namespace cpu
 

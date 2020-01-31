@@ -75,6 +75,7 @@
     <Compile Include="GlimDevice.cs" />
     <Compile Include="GlimPacket.cs" />
     <Compile Include="GlimPixelMap.cs" />
+    <Compile Include="IGlimDevice.cs" />
     <Compile Include="IGlimmer.cs" />
     <Compile Include="Main.cs">
       <SubType>Form</SubType>
@@ -84,7 +85,11 @@
     </Compile>
     <Compile Include="Network.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="ProgramChannelTest.cs" />
     <Compile Include="ProgramChristmas.cs" />
+    <Compile Include="ProgramRainbow.cs" />
+    <Compile Include="ProgramStatic.cs" />
+    <Compile Include="ProgramTestWindow.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="Main.resx">
       <DependentUpon>Main.cs</DependentUpon>

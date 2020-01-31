@@ -26,26 +26,21 @@
 	}
 
 	interface IFx {
-		/// <summary>called to reset the effect, always called prior to first execution</summary>
-		/// <param name="pixelCount">effector is expected to supply this number of pixels from Execute</param>
-		void Initialize( int pixelCount );
-
 		/// <summary></summary>
 		/// <param name="ctx">current frame context</param>
 		/// <returns>enumeration of destination colour data, this will be consumed up to pixelCount</returns>
 		IEnumerable<Color> Execute( IFxContext ctx );
 
-		/// <summary>indicates if Execute method should be called</summary>
+		/// <summary>indicates if Execute method should be called, continuous effects can just return true, one-shot effects can indicate when done</summary>
 		bool IsRunning { get; }
 	}
 
-	class FxContextUnbounded : IFxContext {
-		public FxContextUnbounded( DateTime started ){
-			mTimeNow = DateTime.Now - started;
+	class FxContextContinuous : IFxContext {
+		public FxContextContinuous( DateTime started ){
+			TimeNow = DateTime.Now - started;
 		}
-		readonly TimeSpan mTimeNow;
 
-		public TimeSpan TimeNow => mTimeNow;
+		public TimeSpan TimeNow { get; }
 		public TimeSpan TimeLength => TimeSpan.Zero;
 	}
 }

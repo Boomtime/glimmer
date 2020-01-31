@@ -98,13 +98,6 @@
 			b = ClampToUnity( b + m );
 		}
 
-		/// <summary>make two colors be equal</summary>
-		public void CopyFrom( ColorReal rc ) {
-			Hue = rc.Hue;
-			Saturation = rc.Saturation;
-			Luminance = rc.Luminance;
-		}
-
 		/// <summary>converts the HSL colour to RGB Color structure</summary>
 		/// <returns>Microsoft Color</returns>
 		public Color ToColor() {
