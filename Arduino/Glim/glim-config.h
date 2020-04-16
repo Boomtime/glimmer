@@ -10,8 +10,6 @@ bool save( bool force = false );
 struct key_s {
 	virtual operator String() const = 0;
 	virtual const String& operator = ( const String& ) = 0;
-	virtual const char* c_str( void ) const = 0;
-	virtual int length() const = 0;
 };
 
 namespace key {

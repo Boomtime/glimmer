@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle( "gui_harness" )]
-[assembly: AssemblyDescription( "" )]
+[assembly: AssemblyTitle( "Beta Crucis" )]
+[assembly: AssemblyDescription( "Look at all the pretty lights" )]
 [assembly: AssemblyConfiguration( "" )]
-[assembly: AssemblyCompany( "" )]
-[assembly: AssemblyProduct( "gui_harness" )]
-[assembly: AssemblyCopyright( "Copyright ©  2017" )]
+[assembly: AssemblyCompany( "ShadowCreatures" )]
+[assembly: AssemblyProduct( "Glimmer" )]
+[assembly: AssemblyCopyright( "Copyright ©  2020" )]
 [assembly: AssemblyTrademark( "" )]
 [assembly: AssemblyCulture( "" )]
 

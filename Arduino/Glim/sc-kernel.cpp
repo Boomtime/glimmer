@@ -136,16 +136,16 @@ void reboot( void ) {
 }
 
 namespace cpu {
-stats_t sample( uint base_scale ) {
-	stats_t ret = { 0, 0, 0 };
-	uint total_us = local.user_us + local.free_us + local.system_us;
-	if( 0 < total_us ) {
-		ret.user = ( local.user_us * base_scale ) / total_us;
-		ret.free = ( local.free_us * base_scale ) / total_us;
-		ret.system = ( local.system_us * base_scale ) / total_us;
+	stats_t sample( uint base_scale ) {
+		stats_t ret = { 0, 0, 0 };
+		uint total_us = local.user_us + local.free_us + local.system_us;
+		if( 0 < total_us ) {
+			ret.user = ( local.user_us * base_scale ) / total_us;
+			ret.free = ( local.free_us * base_scale ) / total_us;
+			ret.system = ( local.system_us * base_scale ) / total_us;
+		}
+		return ret;
 	}
-	return ret;
-}
 } // namespace cpu
 
 

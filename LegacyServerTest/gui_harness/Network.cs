@@ -1,55 +1,171 @@
 ﻿namespace ShadowCreatures.Glimmer {
 	using System;
-	using System.Linq;
 	using System.Net;
 	using System.Net.Sockets;
 	using System.Collections.Generic;
 	using System.Text;
 	using System.Diagnostics;
     using System.Drawing;
+	using System.Collections;
 
-    /// <summary>order of colour triples</summary>
-    public enum NetworkColorOrder {
+	/// <summary>order of colour triples</summary>
+	public enum NetworkColourOrder {
 		RGB, // WS2812 (Glim orders the output modulator for this goal)
 		GBR, // WS2811 (bizarro world)
 	}
 
+	abstract class NetworkMessage {
+
+		static protected readonly DateTime StartDatetime = DateTime.Now;
+
+		abstract class TxDatagram : List<byte> {
+			public abstract void AddColour( Color c );
+
+			class RGB : TxDatagram {
+				public override void AddColour( Color c ) {
+					Add( c.R ); Add( c.G ); Add( c.B );
+				}
+			}
+
+			class GBR : TxDatagram {
+				public override void AddColour( Color c ) {
+					Add( c.G ); Add( c.B ); Add( c.R );
+				}
+			}
+
+			public static TxDatagram Create( NetworkColourOrder order ) {
+				if( NetworkColourOrder.GBR == order ) {
+					return new GBR();
+				}
+				return new RGB();
+			}
+		}
+
+		readonly TxDatagram data;
+
+		protected NetworkMessage( NetworkColourOrder order = NetworkColourOrder.RGB ) {
+			data = TxDatagram.Create( order );
+		}
+
+		protected void AddByte( byte b ) {
+			data.Add( b );
+		}
+
+		protected void AddShort( short s ) {
+			AddByte( (byte)( ( s & 0x7F00 ) >> 8 ) );
+			AddByte( (byte)( s & 0xFF ) );
+		}
+
+		protected void AddLong( long l ) {
+			AddByte( (byte)( ( l & 0x7F000000 ) >> 24 ) );
+			AddByte( (byte)( ( l & 0xFF0000 ) >> 16 ) );
+			AddByte( (byte)( ( l & 0xFF00 ) >> 8 ) );
+			AddByte( (byte)( l & 0xFF ) );
+		}
+
+		protected void AddString( string s ) {
+			if( string.IsNullOrEmpty( s ) ) {
+				AddByte( 0 );
+			}
+			else {
+				AddByte( (byte)( s.Length ) );
+				data.AddRange( Encoding.ASCII.GetBytes( s ) );
+			}
+		}
+
+		protected void AddColour( Color c ) {
+			data.AddColour( c );
+		}
+
+		public byte[] MakePacket() {
+			return data.ToArray();
+		}
+	}
+
+	class NetworkMessagePing : NetworkMessage {
+		protected NetworkMessagePing( bool isPingReply = false, TimeSpan? uptime = null ) {
+			TimeSpan supt = uptime ?? DateTime.Now - StartDatetime;
+			AddByte( (byte)( isPingReply ? NetworkMessageType.Pong : NetworkMessageType.Ping ) );
+			AddByte( (byte)( HardwareType.Server ) );
+			AddString( System.Environment.MachineName );
+			AddLong( (long)( supt.TotalSeconds ) );
+		}
+
+		public NetworkMessagePing( TimeSpan? uptime = null ) : this( false, uptime ) {
+		}
+	}
+
+	class NetworkMessagePingReply : NetworkMessagePing {
+		public NetworkMessagePingReply( TimeSpan? uptime = null ) : base( true, uptime ) {
+		}
+	}
+
+	class NetworkMessageButtonColour : NetworkMessage {
+		public NetworkMessageButtonColour( Color min, Color max, short period, Color onHeld, NetworkColourOrder order = NetworkColourOrder.RGB ) : base( order ) {
+			AddByte( (byte)NetworkMessageType.ButtonColour );
+			AddColour( min );
+			AddColour( max );
+			AddShort( period );
+			AddColour( onHeld );
+		}
+	}
+
+	class NetworkMessageColourVector : NetworkMessage {
+		public NetworkMessageColourVector( IEnumerable<Color> vector, NetworkColourOrder order = NetworkColourOrder.RGB, bool primaryChannel = true ) : base( order ) {
+			AddByte( (byte)( primaryChannel ? NetworkMessageType.RGB1 : NetworkMessageType.RGB2 ) );
+			foreach( var c in vector ) {
+				AddColour( c );
+			}
+		}
+	}
+
 	/// <summary>top-level network message identifier</summary>
-	public enum NetworkMessage : byte {
+	public enum NetworkMessageType : byte {
 		RGB1 = 1,
 		RGB2 = 2,
 		Ping = 3,
 		Pong = 4,
 		ButtonStatus = 5,
-		ButtonColor = 6,
+		ButtonColour = 6,
+	}
+
+	class NetworkException : Exception {
+		public NetworkException( IPEndPoint src, string msg ) : base( msg ) {
+			SourceAddress = src;
+		}
+
+		public IPEndPoint SourceAddress { get; }
 	}
 
 	/// <summary>base class for all event args from the server, always have a IPEndPoint SourceAddress</summary>
 	class NetworkEventArgs : EventArgs {
-		protected NetworkEventArgs( IPEndPoint source ){
+		protected NetworkEventArgs( NetworkMessageType type, IPEndPoint source ){
+			MessageType = type;
 			SourceAddress = source;
 		}
-		public readonly IPEndPoint SourceAddress;
+		
+		public IPEndPoint SourceAddress { get; }
+
+		public NetworkMessageType MessageType { get; }
 	}
 
 	/// <summary>gives paramters to ping/pong events</summary>
 	class NetworkPingEventArgs : NetworkEventArgs, IGlimDevice {
-		public NetworkPingEventArgs( IPEndPoint source, HardwareType hw, string hostname, TimeSpan uptime, float cpu, int dbm, uint net_recv ) : base( source ) {
+		public NetworkPingEventArgs( NetworkMessageType type, IPEndPoint source, HardwareType hw, string hostname, TimeSpan uptime, float cpu, int dbm, uint net_recv ) : base( type, source ) {
 			Hostname = hostname;
 			HardwareType = hw;
 			Uptime = uptime;
 			CPU = cpu;
 			dBm = dbm;
-			RSSI = DBMtoRSSI( dbm );
 			NetRecv = net_recv;
 		}
-		public virtual HardwareType HardwareType { get; }
-		public virtual string Hostname { get; }
-		public virtual IPEndPoint IPEndPoint => SourceAddress;
-		public virtual TimeSpan Uptime { get; }
-		public virtual float CPU { get; }
-		public virtual int dBm { get; }
-		public virtual WifiRSSI RSSI { get; }
+		public HardwareType HardwareType { get; }
+		public string Hostname { get; }
+		public IPEndPoint IPEndPoint => SourceAddress;
+		public TimeSpan Uptime { get; }
+		public float CPU { get; }
+		public int dBm { get; }
+		public WifiRSSI RSSI => DBMtoRSSI( dBm );
 		public uint NetRecv { get; }
 
 		static WifiRSSI DBMtoRSSI( int dbm ) {
@@ -70,63 +186,41 @@
 	}
 
 	class NetworkButtonStatusEventArgs : NetworkEventArgs {
-		public NetworkButtonStatusEventArgs( IPEndPoint source, ButtonStatus status ) : base( source ) {
+		public NetworkButtonStatusEventArgs( IPEndPoint source, ButtonStatus status ) : base( NetworkMessageType.ButtonStatus, source ) {
 			ButtonStatus = status;
 		}
-		public readonly ButtonStatus ButtonStatus;
+
+		public ButtonStatus ButtonStatus { get; }
+	}
+
+	class NetworkUdpPacket {
+		public NetworkUdpPacket( IPEndPoint dst, NetworkMessage msg ) {
+			Destination = dst;
+			Payload = msg.MakePacket();
+		}
+
+		public IPEndPoint Destination { get; private set; }
+		public byte[] Payload { get; private set; }
+	}
+
+	class NetworkUdpFrame : List<NetworkUdpPacket> {
+		public void Add( IPEndPoint dst, NetworkMessage msg ) {
+			Add( new NetworkUdpPacket( dst, msg ) );
+		}
 	}
 
 	class NetworkServer {
 
 		public const int DefaultPort = 1998;
 
-		UdpClient mSocket;
-		bool mAsyncReceiveEnabled;
-		readonly DateTime mStartDatetime;
+		readonly UdpClient mSocket;
 
 		public NetworkServer( int port = DefaultPort ) {
 			mSocket = new UdpClient( port ) { EnableBroadcast = true };
-			mAsyncReceiveEnabled = false;
-			mStartDatetime = DateTime.Now;
-		}
-
-		byte[] ConstructPing( bool ping ) {
-			var result = new List<byte>();
-			string hostname = System.Environment.MachineName;
-			long uptime = (long)( DateTime.Now - mStartDatetime ).TotalSeconds;
-
-			result.Add( (byte)( ping ? NetworkMessage.Ping : NetworkMessage.Pong ) );
-			result.Add( (byte)( HardwareType.Server ) );
-			result.Add( (byte)( hostname.Length ) );
-			result.AddRange( Encoding.ASCII.GetBytes( hostname ) );
-			result.Add( (byte)( ( uptime & 0x7F000000 ) >> 24 ) );
-			result.Add( (byte)( ( uptime & 0xFF0000 ) >> 16 ) );
-			result.Add( (byte)( ( uptime & 0xFF00 ) >> 8 ) );
-			result.Add( (byte)( uptime & 0xFF ) );
-
-			return result.ToArray();
-		}
-
-		public void Listen() {
-			if( !mAsyncReceiveEnabled ) {
-				AsyncDatagramReceive();
-				mAsyncReceiveEnabled = true;
-			}
-		}
-
-		void DataReceived( IAsyncResult ar ) {
-			var rhost = new IPEndPoint( IPAddress.Any, 0 );
-			var data = mSocket.EndReceive( ar, ref rhost );
-			ProcessDatagram( rhost, new RxDatagram( data ) );
-			AsyncDatagramReceive();
-		}
-
-		void AsyncDatagramReceive() {
-			mSocket.BeginReceive( DataReceived, null );
 		}
 
 		class RxDatagram {
-			byte[] mData;
+			readonly byte[] mData;
 			int mIndex;
 
 			public RxDatagram( byte[] data ) {
@@ -175,118 +269,57 @@
 				mIndex += length;
 				return ret;
 			}
-		}
 
-		/// <summary>called whenever a ping message is received</summary>
-		public event EventHandler<NetworkPingEventArgs> PingReceived;
+			public NetworkEventArgs ParseMessage( IPEndPoint rhost ) {
+				var msg = (NetworkMessageType)ReadByte();
+				switch( msg ) {
+					case NetworkMessageType.ButtonStatus:
+						return new NetworkButtonStatusEventArgs( rhost, (ButtonStatus)ReadByte() );
+					case NetworkMessageType.Ping:
+					case NetworkMessageType.Pong:
+						var hw = (HardwareType)ReadByte();
+						var hname = ReadString();
+						var uptime = TimeSpan.FromSeconds( ReadUint() );
+						float cpu = (float)( ReadByte() ) / byte.MaxValue;
+						int dbm = ReadByte() - byte.MaxValue;
+						uint nrecv = ReadUint();
+						return new NetworkPingEventArgs( msg, rhost, hw, hname, uptime, cpu, dbm, nrecv );
+				}
+				throw new NetworkException( rhost, string.Format( "Failed to parse message type {0}", (byte)msg ) );
+			}
 
-		protected virtual void OnPingReceived( NetworkPingEventArgs e ) {
-			PingReceived?.Invoke( this, e );
-		}
-
-		/// <summary>called whenever a ping message is received</summary>
-		public event EventHandler<NetworkPingEventArgs> PongReceived;
-
-		protected virtual void OnPongReceived( NetworkPingEventArgs e ) {
-			PongReceived?.Invoke( this, e );
-		}
-
-		/// <summary>called whenever a button status message is received</summary>
-		public event EventHandler<NetworkButtonStatusEventArgs> ButtonStatusReceived;
-
-		protected virtual void OnButtonStatusReceived( NetworkButtonStatusEventArgs e ) {
-			ButtonStatusReceived?.Invoke( this, e );
-		}
-
-		void ProcessDatagram( IPEndPoint rhost, RxDatagram dgram ) {
-			Debug.WriteLine( "got some data from " + rhost.Address.ToString() );
-			var msg = (NetworkMessage)dgram.ReadByte();
-			switch( msg ) {
-				case NetworkMessage.Ping:
-				case NetworkMessage.Pong: {
-						var hw = (HardwareType)dgram.ReadByte();
-						var hname = dgram.ReadString();
-						var uptime = TimeSpan.FromSeconds( dgram.ReadUint() );
-						float cpu = (float)( dgram.ReadByte() ) / byte.MaxValue;
-						int dbm = dgram.ReadByte() - byte.MaxValue;
-						uint nrecv = dgram.ReadUint();
-						var args = new NetworkPingEventArgs( rhost, hw, hname, uptime, cpu, dbm, nrecv );
-						if( NetworkMessage.Ping == msg ) {
-							OnPingReceived( args );
-						}
-						else {
-							OnPongReceived( args );
-						}
-					}
-					break;
-
-				case NetworkMessage.ButtonStatus: {
-						OnButtonStatusReceived( new NetworkButtonStatusEventArgs( rhost, (ButtonStatus)dgram.ReadByte() ) );
-					}
-					break;
-
-				default: {
-					Debug.WriteLine( string.Format( "mystery message ({0}) received (and ignored)", (byte)msg ) );
-					}
-					break;
+			static public NetworkEventArgs ParseMessage( IPEndPoint rhost, byte[] data ) {
+				return new RxDatagram( data ).ParseMessage( rhost );
 			}
 		}
 
-		public void SendPing( IPEndPoint dst ) {
-			var ping = ConstructPing( true );
-			mSocket.Send( ping, ping.Length, dst );
-		}
-
-		public void SendPong( IPEndPoint dst ) {
-			var ping = ConstructPing( false );
-			mSocket.Send( ping, ping.Length, dst );
-		}
-
-		abstract class TxDatagram : List<byte> {
-			public abstract void AddColour( Color c );
-
-			public void AddShort( short s ) {
-				Add( (byte)( ( s & 0x7F00 ) >> 8 ) );
-				Add( (byte)( s & 0xFF ) );
-			}
-
-			class TxRGB : TxDatagram {
-				public override void AddColour( Color c ) {
-					Add( c.R ); Add( c.G ); Add( c.B );
+		public void Send( IEnumerable<NetworkUdpPacket> pkts ) {
+			lock( mSocket ) {
+				foreach( var p in pkts ) {
+					mSocket.Send( p.Payload, p.Payload.Length, p.Destination );
 				}
 			}
-
-			class TxGBR : TxDatagram {
-				public override void AddColour( Color c ) {
-					Add( c.G ); Add( c.B ); Add( c.R );
-				}
-			}
-
-			public static TxDatagram Create( NetworkColorOrder order ) {
-				if( NetworkColorOrder.GBR == order ) {
-					return new TxGBR();
-				}
-				return new TxRGB();
-			}
 		}
 
-		public void SendRGB( IPEndPoint dst, IEnumerable<Color> vector, NetworkColorOrder order = NetworkColorOrder.RGB ) {
-			var dgram = TxDatagram.Create( order );
-			dgram.Add( (byte)NetworkMessage.RGB1 );
-			foreach( var c in vector ) {
-				dgram.AddColour( c );
-			}
-			mSocket.Send( dgram.ToArray(), dgram.Count, dst );
+		public void Send( params NetworkUdpPacket[] pkts ) {
+			Send( pkts as IEnumerable<NetworkUdpPacket> );
 		}
 
-		public void SendButtonColor( IPEndPoint dst, Color min, Color max, short period, Color onHeld, NetworkColorOrder order = NetworkColorOrder.RGB ) {
-			var dgram = TxDatagram.Create( order );
-			dgram.Add( (byte)NetworkMessage.ButtonColor );
-			dgram.AddColour( min );
-			dgram.AddColour( max );
-			dgram.AddShort( period );
-			dgram.AddColour( onHeld );
-			mSocket.Send( dgram.ToArray(), dgram.Count, dst );
+		public void Send( IPEndPoint dst, NetworkMessage msg ) {
+			Send( new NetworkUdpPacket( dst, msg ) );
+		}
+
+		public NetworkEventArgs Receive() {
+			if( 0 == mSocket.Available ) {
+				return null;
+			}
+			var rhost = new IPEndPoint( IPAddress.Any, 0 );
+			byte[] data;
+			lock( mSocket ) {
+				data = mSocket.Receive( ref rhost );
+			}
+			var dgram = new RxDatagram( data );
+			return dgram.ParseMessage( rhost );
 		}
 	}
 }

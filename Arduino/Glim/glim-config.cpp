@@ -18,12 +18,6 @@ struct key_impl_s : key_s {
 		value = v;
 		return v;
 	}
-	virtual const char* c_str( void ) const {
-		return this->value.c_str();
-	}
-	virtual int length() const {
-		return this->value.length();
-	}
 };
 
 namespace local {
@@ -98,9 +92,9 @@ bool load( void ) {
 	key::wifi_psk = fs_read_string( f );
 	key::has_changed = false;
 
-	DEBUG_SPRINT( "DeviceName [%s]", key::device_name.c_str() );
-	DEBUG_SPRINT( "WifiSSID [%s]", key::wifi_ssid.c_str() );
-	DEBUG_SPRINT( "WifiPwd [len:%i]", key::wifi_psk.length() );
+	DEBUG_SPRINT( "DeviceName [%s]", key::local::device_name.value.c_str() );
+	DEBUG_SPRINT( "WifiSSID [%s]", key::local::wifi_ssid.value.c_str() );
+	DEBUG_SPRINT( "WifiPwd [len:%i]", key::local::wifi_psk.value.length() );
 
 	f.close();
 	return true;
@@ -115,7 +109,7 @@ bool save( bool force ) {
 			DEBUG_PRINT( "failed to open /config for writing" );
 			return false;
 		}
-		#define WK(k) f.write( key::k.c_str(), key::k.length() ); f.write( '\n' )
+		#define WK(kn) { String tk = key::kn; f.write( tk.c_str(), tk.length() ); f.write( '\n' ); }
 		WK( device_name );
 		WK( wifi_ssid );
 		WK( wifi_psk );

@@ -207,9 +207,10 @@ static void wifi_loop( void ) {
 			}
 		}
 		else if( local::next_attempt < millis() ) {
-			DEBUG_PRINT( "attempting connection" );
+			String ssid = config::key::wifi_ssid;
+			DEBUG_SPRINT( "attempting connection to [%s]", ssid.c_str() );
 			local::next_attempt = millis() + TIME_BETWEEN_ATTEMPTS_MS;
-			WiFi.begin( config::key::wifi_ssid, config::key::wifi_psk );
+			WiFi.begin( ssid, config::key::wifi_psk );
 		}
 		break;
 	}
@@ -275,7 +276,7 @@ void initialize( void ) {
 
 	String device_name = config::key::device_name;
 
-	DEBUG_SPRINT( "deviceName [%s] wifiSSID [%s]", device_name.c_str(), config::key::wifi_ssid.c_str() );
+	DEBUG_SPRINT( "deviceName [%s]", device_name.c_str() );
 
 	local::is_connected = false;
 	local::next_attempt = 0;

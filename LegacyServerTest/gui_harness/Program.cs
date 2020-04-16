@@ -1,18 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Windows.Forms;
+﻿namespace ShadowCreatures.Glimmer {
+	using System;
+	using System.Windows.Forms;
 
-namespace gui_harness
-{
-	static class Program
-	{
+	static class Program {
 		/// <summary>
 		/// The main entry point for the application.
 		/// </summary>
 		[STAThread]
-		static void Main()
-		{
+		static void Main() {
 			Application.EnableVisualStyles();
 			Application.SetCompatibleTextRenderingDefault( false );
 			Application.Run( new Main() );

@@ -11,13 +11,13 @@ static const uint8_t AP_IP[] =      { 192, 168, 0, 1 };
 static const uint8_t AP_GATEWAY[] = { 192, 168, 0, 1 };
 static const uint8_t AP_SUBNET[] = 	{ 255, 255, 255, 0 };
 
-static const int HTML_FORM_CONTENT_LEN = 320;
 static const char HTML_FORM_CONTENT[] PROGMEM = 
 	"<html><body><form method='post' action='/'>"
 	"Device Name: <input type='text' name='device' value='%s' /><br />"
 	"Wifi SSID: <input type='text' name='ssid' value='%s' /><br />"
 	"Wifi pwd: <input type='text' name='pwd' value='' /><br />"
 	"<input type='submit' value='Submit &amp; Reboot' /></form></body></html>";
+static const int HTML_FORM_CONTENT_LEN = sizeof(HTML_FORM_CONTENT);
 
 static ESP8266WebServer* http;
 

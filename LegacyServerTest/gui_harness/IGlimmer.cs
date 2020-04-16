@@ -7,10 +7,6 @@
 		/// <summary>get the number of pixels in the packet</summary>
 		int PixelCount { get; }
 
-		/// <summary>enumerate all packet data</summary>
-		/// <returns></returns>
-		IEnumerable<Color> Read();
-
 		/// <summary>set pixel colour by blending against existing using src-alpha</summary>
 		/// <param name="pixel"></param>
 		/// <param name="src"></param>
@@ -23,6 +19,8 @@
 		/// <summary>total count of pixels in the map</summary>
 		int PixelCount { get; }
 
+		/// <summary>write colour data into the pixel map</summary>
+		/// <param name="src"></param>
 		void Write( IEnumerable<Color> src );
 	}
 }

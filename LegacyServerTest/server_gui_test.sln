@@ -5,9 +5,11 @@ VisualStudioVersion = 16.0.29519.181
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "server_gui_test", "server_gui_test\server_gui_test.csproj", "{8BCEAFAD-AEE1-4EDB-9C4F-C8B2FC3FCF4A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "glimmer_harness", "gui_harness\glimmer_harness.csproj", "{4F924A37-0CB0-4CAE-ACC4-C41298255C37}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "beta_crucis", "gui_harness\beta_crucis.csproj", "{4F924A37-0CB0-4CAE-ACC4-C41298255C37}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GlimFake", "GlimFake\GlimFake.csproj", "{1FFAFECC-8150-41BD-9956-7477C9700BDC}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ThreadPrecisionTest", "ThreadPrecisionTest\ThreadPrecisionTest.csproj", "{484F3411-C2A6-4F99-8036-C8AEE8FCA2A2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -53,6 +55,18 @@ Global
 		{1FFAFECC-8150-41BD-9956-7477C9700BDC}.Release|x64.Build.0 = Release|Any CPU
 		{1FFAFECC-8150-41BD-9956-7477C9700BDC}.Release|x86.ActiveCfg = Release|Any CPU
 		{1FFAFECC-8150-41BD-9956-7477C9700BDC}.Release|x86.Build.0 = Release|Any CPU
+		{484F3411-C2A6-4F99-8036-C8AEE8FCA2A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{484F3411-C2A6-4F99-8036-C8AEE8FCA2A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{484F3411-C2A6-4F99-8036-C8AEE8FCA2A2}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{484F3411-C2A6-4F99-8036-C8AEE8FCA2A2}.Debug|x64.Build.0 = Debug|Any CPU
+		{484F3411-C2A6-4F99-8036-C8AEE8FCA2A2}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{484F3411-C2A6-4F99-8036-C8AEE8FCA2A2}.Debug|x86.Build.0 = Debug|Any CPU
+		{484F3411-C2A6-4F99-8036-C8AEE8FCA2A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{484F3411-C2A6-4F99-8036-C8AEE8FCA2A2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{484F3411-C2A6-4F99-8036-C8AEE8FCA2A2}.Release|x64.ActiveCfg = Release|Any CPU
+		{484F3411-C2A6-4F99-8036-C8AEE8FCA2A2}.Release|x64.Build.0 = Release|Any CPU
+		{484F3411-C2A6-4F99-8036-C8AEE8FCA2A2}.Release|x86.ActiveCfg = Release|Any CPU
+		{484F3411-C2A6-4F99-8036-C8AEE8FCA2A2}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -117,8 +117,8 @@ KERNEL_LOOP_DEFINE( debug_metrics_print ) {
 
 static void set_system_lamp_glimmer( const rgb_t& min, const rgb_t& max ) {
 	DEBUG_TRACE( set_system_lamp_glimmer );
-	rgb::lamp::system.set_colour( min );
-	rgb::lamp::system.set_glimmer( max, SYSTEM_LAMP_GLIMMER_PERIOD );
+	rgb::lamp::system.set_colour( max );
+	rgb::lamp::system.set_glimmer( min, SYSTEM_LAMP_GLIMMER_PERIOD );
 }
 
 static void set_system_lamp_spark( const rgb_t& max ) {
@@ -224,7 +224,7 @@ void setup() {
 	Serial.begin( 115200 );
 	Serial.println( "" );
 	Serial.println( "*" );
-	Serial.println( "*  ShadowCreatures GlimSwarm v4.0" );
+	Serial.println( "*  ShadowCreatures GlimSwarm v4.0 (" __DATE__ ")" );
 	Serial.println( "*" );
 	Serial.println( "" );
 	deadman_check();

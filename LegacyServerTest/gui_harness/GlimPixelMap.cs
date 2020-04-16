@@ -102,8 +102,9 @@
 			}
 
 			public IEnumerator<IGlimPacket> GetEnumerator() {
-				foreach( var e in mPacketList )
+				foreach( var e in mPacketList ) {
 					yield return e.Packet;
+				}
 			}
 
 			IEnumerator IEnumerable.GetEnumerator() {
@@ -117,10 +118,7 @@
 
 		GlimPixelMap( List<Element> list ) {
 			mPacketList = list;
-		}
-
-		public GlimPixelMap() {
-			mPacketList = new List<Element>();
+			PixelCount = mPacketList.Aggregate( 0, ( sum, cur ) => sum += cur.PixelCount );
 		}
 
 		public void Write( IEnumerable<Color> src ) {
@@ -132,29 +130,6 @@
 			}
 		}
 
-		public int PixelCount {
-			get {
-				return mPacketList.Aggregate( 0, ( sum, cur ) => sum += cur.PixelCount );
-			}
-		}
-
-		public void Add( IGlimPacket packet, int pixelStart, int pixelCount ) {
-			if( pixelStart < 0 || pixelStart + pixelCount > packet.PixelCount ) {
-				throw new ArgumentOutOfRangeException( "pixelStart or pixelCount are beyond the packet device capabilities" );
-			}
-			if( pixelCount < 0 ) {
-				mPacketList.Add( new ElementBackwards( packet, pixelStart + pixelCount, 0 - pixelCount ) );
-			}
-			else {
-				mPacketList.Add( new Element( packet, pixelStart, pixelCount ) );
-			}
-		}
-
-		public void Add( IGlimPacket packet ) {
-			if( null == packet ) {
-				throw new ArgumentNullException( "packet argument must not be null" );
-			}
-			Add( packet, 0, packet.PixelCount );
-		}
+		public int PixelCount { get; private set; }
 	}
 }

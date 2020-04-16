@@ -1,7 +1,6 @@
 #include "rgb.h"
 namespace rgb {
 
-#define DATA_LOOP_BUFFER	60
 #define MAX_FADER_TIME_MS	60000
 
 using namespace shadowcreatures::arduino;
@@ -33,6 +32,9 @@ struct lamp_impl_s : lamp_api_s {
 
 	// runs programs, sets global "needs_update" if value changed
 	void update( void );
+
+	// calculate sawtooth altitude over range deriving phase from period
+	int sawtooth_by_range( int range ) const;
 };
 
 namespace local {
@@ -43,17 +45,17 @@ namespace local {
 struct lamp_api_s& system = local::system;
 struct lamp_api_s& button = local::button;
 
-
-static int sawtooth_by_range( uint period_ms, int range ) {
-	uint phase = millis() % period_ms;
-	uint half_period = period_ms >> 1;
-	return phase >= half_period ? range * int( period_ms - phase ) / int( half_period ) : range * int( phase ) / int( half_period );
+int lamp_impl_s::sawtooth_by_range( int range ) const {
+	uint phase = millis() % this->period;
+	uint half_period = this->period >> 1;
+	return phase >= half_period ? range * int( this->period - phase ) / int( half_period ) : range * int( phase ) / int( half_period );
 }
 
 void lamp_impl_s::set_colour( const glim::rgb_t& c ) {
 	this->period = 0;
 	this->value = c;
 	needs_update = true;
+	DEBUG_SPRINT( "rgb::lamp::set_colour(): c [%i,%i,%i]", c.r, c.g, c.b );
 }
 
 void lamp_impl_s::set_glimmer( const glim::rgb_t& bound, uint period_ms ) {
@@ -61,6 +63,7 @@ void lamp_impl_s::set_glimmer( const glim::rgb_t& bound, uint period_ms ) {
 	this->fade_time_target = 0;
 	this->max = this->value;
 	this->min = bound;
+	DEBUG_SPRINT( "rgb::lamp::set_glimmer(): min [%i,%i,%i] max [%i,%i,%i] period [%i]", min.r, min.g, min.b, max.r, max.g, max.b, period_ms );
 	this->update();
 }
 
@@ -84,7 +87,7 @@ void lamp_impl_s::update( void ) {
 		// animating...
 		if( 0 == this->fade_time_target ) {
 			// glimmer
-			int saw = 1 + sawtooth_by_range( this->period, 1000 );
+			int saw = 1 + this->sawtooth_by_range( 1000 );
 #			undef CH
 #			define CH(x) uint8_t( int(this->min.x) + ( int(this->max.x) - int(this->min.x) ) * saw / 1000 )
 			this->value = rgb_t( CH(r), CH(g), CH(b) );
@@ -113,30 +116,21 @@ void lamp_impl_s::update( void ) {
 } // namespace lamp
 /********************************************************/
 
-static void WS2811_writeBytes( const colour_t* array, uint count ) {
+static inline void WS2811_writeByte( uint8_t b ) {
 	static const uint8_t q[4] = { 0b00110111, 0b00000111, 0b00110100, 0b00000100 };
 	uint8_t buf[4]; //  		     11101110    10001110    11101000    10001000
-	uint8_t one;    //               00010001    01110001    00010111    01110111
-	while( count > 0 ) {
-		one = *array++;
-		buf[0] = q[(one >> 6) & 3];
-		buf[1] = q[(one >> 4) & 3];
-		buf[2] = q[(one >> 2) & 3];
-		buf[3] = q[(one >> 0) & 3];
-		Serial1.write( buf, sizeof(buf) );
-		count--;
-	}
+					//               00010001    01110001    00010111    01110111
+	buf[0] = q[(b >> 6) & 3];
+	buf[1] = q[(b >> 4) & 3];
+	buf[2] = q[(b >> 2) & 3];
+	buf[3] = q[(b >> 0) & 3];
+	Serial1.write( buf, sizeof(buf) );
 }
 
 static void WS2811_writeSystemColours( void ) {
-	colour_t clrs[6];
-	clrs[0] = lamp::local::system.value.r;
-	clrs[1] = lamp::local::system.value.g;
-	clrs[2] = lamp::local::system.value.b;
-	clrs[3] = lamp::local::button.value.r;
-	clrs[4] = lamp::local::button.value.g;
-	clrs[5] = lamp::local::button.value.b;
-	WS2811_writeBytes( clrs, sizeof(clrs) );
+	#define WSCB(x,c) WS2811_writeByte(lamp::local::x.value.c)
+	WSCB(system,r);WSCB(system,g);WSCB(system,b);
+	WSCB(button,r);WSCB(button,g);WSCB(button,b);
 }
 
 static bool can_update_system( void ) {
@@ -148,20 +142,15 @@ static bool can_update_system( void ) {
 KERNEL_LOOP_DEFINE( rgb ) {
 	lamp::local::system.update();
 	lamp::local::button.update();
-	if( lamp::needs_update && can_update_system() ) {
-		//DEBUG_PRINT( "updating system lamp" );
-		// need to clear the line to switch outputs
-		Serial1.flush();
-		digitalWrite( PIN::RGB_ENABLE, HIGH );
-		delay( 1 );
+	if( lamp::needs_update && lamp::last_update_time <= millis() + 40 ) {
+		// flush system lamps
 		WS2811_writeSystemColours();
 		Serial1.flush();
-		digitalWrite( PIN::RGB_ENABLE, LOW );
-		lamp::needs_update = false;
+		delay( 1 );
 		lamp::last_update_time = millis();
+		lamp::needs_update = false;
 	}
-
-	return 20;
+	return 40;
 }
 
 
@@ -180,20 +169,21 @@ void initialize( void ) {
 	DEBUG_PRINT( "Serial1 init" );
 	Serial1.begin( 3200000, SerialConfig(config), SERIAL_TX_ONLY );
 
-	// enable the output driver chip in system/button mode
+	// enable the output driver chip
 	pinMode( PIN::RGB_ENABLE, OUTPUT );
-	digitalWrite( PIN::RGB_ENABLE, HIGH );
+	digitalWrite( PIN::RGB_ENABLE, LOW );
 
 	KERNEL_LOOP_ATTACH( rgb, 50 );
 }
 
 // main line of RGB(W) lamps, reads all available() bytes from the Stream
 void write( Stream& src ) {
-	colour_t d[DATA_LOOP_BUFFER];
+	WS2811_writeSystemColours();
 	for( uint n = src.available() ; n > 0 ; n = src.available() ) {
-		n = src.readBytes( d, n > sizeof(d) ? sizeof(d) : n );
-		WS2811_writeBytes( d, n );
+		WS2811_writeByte( src.read() );
 	}
+	lamp::last_update_time = millis();
+	lamp::needs_update = false;
 }
 
 
