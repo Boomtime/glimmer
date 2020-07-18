@@ -35,6 +35,8 @@
 			set { mPixelData = new Color[value]; }
 		}
 
+		public event EventHandler Changed;
+
 		public void UpdateFromNetworkData( IGlimDevice args ) {
 			if( 0 == BootCount || args.Uptime.TotalSeconds < Uptime.TotalSeconds ) {
 				BootCount++;
@@ -46,6 +48,7 @@
 			CPU = args.CPU;
 			RSSI = args.RSSI;
 			dBm = args.dBm;
+			Changed?.Invoke( this, EventArgs.Empty );
 		}
 
 		static NetworkMessageButtonColour ButtonColourDefault {
@@ -133,14 +136,18 @@
 		readonly Dictionary<string, GlimDevice> mList = new Dictionary<string, GlimDevice>();
 
 		public GlimDevice Find( string hostname ) {
-			return mList.TryGetValue( hostname, out GlimDevice device ) ? device : null;
+			lock( mList ) {
+				return mList.TryGetValue( hostname, out GlimDevice device ) ? device : null;
+			}
 		}
 
 		public GlimDevice Find( IPEndPoint sourceAddress ) {
-			// @todo: is this used a lot? maybe dictionary the IPs too?
-			foreach( var g in AllSeenDevices() ) {
-				if( g.IPEndPoint.Equals( sourceAddress ) ) {
-					return g;
+			lock( mList ) {
+				// @todo: is this used a lot? maybe dictionary the IPs too?
+				foreach( var g in mList.Values ) {
+					if( null != g.IPEndPoint && g.IPEndPoint.Equals( sourceAddress ) ) {
+						return g;
+					}
 				}
 			}
 			return null;
@@ -152,22 +159,20 @@
 			var g = Find( hostname );
 			if( null == g ) {
 				g = new GlimDevice( hostname );
-				mList.Add( g.Hostname, g );
+				lock( mList ) {
+					mList.Add( g.Hostname, g );
+				}
 				DeviceAdded?.Invoke( this, new DeviceAddedEventArgs( g ) );
 			}
 			return g;
 		}
 
-		public IEnumerable<GlimDevice> All() {
-			return mList.Values;
-		}
-
-		/// <summary>enumerate all devices that have an observed IP address</summary>
-		/// <returns></returns>
-		public IEnumerable<GlimDevice> AllSeenDevices() {
-			foreach( var g in mList.Values ) {
-				if( null != g.IPEndPoint ) {
-					yield return g;
+		public void ForEachSeenDevice( Action<GlimDevice> e ) {
+			lock( mList ) {
+				foreach( var g in mList.Values ) {
+					if( null != g.IPEndPoint ) {
+						e( g );
+					}
 				}
 			}
 		}
@@ -176,7 +181,9 @@
 		/// <returns>the complete map</returns>
 		public IGlimPixelMap CreateCompletePixelMap() {
 			// create a contiguous pixel map
-			return new GlimPixelMap.Factory { AllSeenDevices() }.Compile();
+			var f = new GlimPixelMap.Factory();
+			ForEachSeenDevice( g => f.Add( g ) );
+			return f.Compile();
 		}
 	}
 }

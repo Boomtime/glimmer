@@ -8,14 +8,14 @@
 
 		/// <summary>internal descriptor of a device</summary>
 		class GlimDescriptor {
-			readonly GlimPixelMap mPixelMap;
+			readonly IGlimPixelMap mPixelMap;
 			IFx mFxComet;
 
 			public GlimDescriptor( GlimDevice device, Color partyColor ) {
 				Device = device;
 				PartyColor = partyColor;
 				mFxComet = null;
-				mPixelMap = new GlimPixelMap.Factory { { device, 0, 100 } };
+				mPixelMap = new GlimPixelMap.Factory { { device, 0, 100 } }.Compile();
 			}
 
 			public void WriteExecute( IFxContext ctx ) {
@@ -46,9 +46,9 @@
 
 		readonly GlimDescriptor mGlimRedGun;
 		readonly GlimDescriptor mGlimBlueGun;
-		readonly GlimPixelMap mPixelMapStars;
-		readonly GlimPixelMap mPixelMapBarrel;
-		readonly GlimPixelMap mPixelMapPerimeter;
+		readonly IGlimPixelMap mPixelMapStars;
+		readonly IGlimPixelMap mPixelMapBarrel;
+		readonly IGlimPixelMap mPixelMapPerimeter;
 		readonly FxScale mFxPerimeterRainbow;
 		readonly FxScale mFxStarlight;
 		readonly IFx mFxCannonTwinkle;
@@ -74,9 +74,9 @@
 				LuminanceMaxima = 0.8
 			};
 
-			mPixelMapStars = new GlimPixelMap.Factory { deviceStars };
-			mPixelMapBarrel = new GlimPixelMap.Factory { { deviceRed, 100, 50 } };
-			mPixelMapPerimeter = new GlimPixelMap.Factory { { deviceRed, 0, 100 }, { deviceBlue, 100, -100 } };
+			mPixelMapStars = new GlimPixelMap.Factory { deviceStars }.Compile();
+			mPixelMapBarrel = new GlimPixelMap.Factory { { deviceRed, 100, 50 } }.Compile();
+			mPixelMapPerimeter = new GlimPixelMap.Factory { { deviceRed, 0, 100 }, { deviceBlue, 100, -100 } }.Compile();
 
 			mFxPerimeterRainbow = new FxScale( new FxRainbow() );
 			mFxStarlight = new FxScale( new FxStarlightTwinkle { BaseColor = Color.Yellow } ) { Saturation = 0.3 };

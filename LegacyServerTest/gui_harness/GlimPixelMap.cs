@@ -130,6 +130,6 @@
 			}
 		}
 
-		public int PixelCount { get; private set; }
+		public int PixelCount { get; }
 	}
 }

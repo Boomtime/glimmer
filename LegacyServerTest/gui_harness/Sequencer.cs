@@ -1,8 +1,8 @@
 ﻿namespace ShadowCreatures.Glimmer {
 	using System;
-    using System.IO;
+	using System.IO;
 
-    public interface ISequence {
+	public interface ISequence {
 		void Execute();
 
 		void ButtonStateChanged( IGlimDevice src, ButtonStatus btn );

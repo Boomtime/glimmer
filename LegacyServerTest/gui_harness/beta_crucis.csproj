@@ -99,6 +99,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Engine.cs" />
     <Compile Include="Utility\ColorReal.cs" />
     <Compile Include="Effects\FxCandyCane.cs" />
     <Compile Include="Effects\FxUtils.cs" />
