@@ -3,16 +3,14 @@
 	using System.Drawing;
 
 	class FxCandyCane : IFx {
-		[ConfigurableInteger( Minimum = 1, Maximum = 12 )]
-		public int PixelsPerStripe = 5;
+		[ConfigurableInteger( Min = 1, Max = 12 )]
+		public int PixelsPerStripe { get; set; } = 5;
 
 		[Configurable]
-		public Color ColourStripe = Color.Red;
+		public Color ColourStripe { get; set; } = Color.Red;
 
 		[Configurable]
-		public Color ColourBackground = Color.LightGray;
-
-		public bool IsRunning => true;
+		public Color ColourBackground { get; set; } = Color.LightGray;
 
 		public IEnumerable<Color> Execute( IFxContext ctx ) {
 			while( true ) {

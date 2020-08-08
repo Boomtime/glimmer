@@ -11,14 +11,18 @@
 	class SequenceStatic : SequenceDefault {
 		readonly IGlimPixelMap mMap;
 		readonly Func<Color> fClr;
+		readonly FxSolid mColour;
 
 		public SequenceStatic( GlimManager mgr, Func<Color> clr ) {
 			fClr = clr;
 			mMap = mgr.CreateCompletePixelMap();
+			mColour = new FxSolid();
 		}
 
 		public override void Execute() {
-			mMap.Write( FxUtils.InfiniteColor( fClr() ) );
+			var ctx = MakeCurrentContext();
+			mColour.Colour = fClr();
+			mMap.Write( mColour.Execute( ctx ) );
 		}
 	}
 }

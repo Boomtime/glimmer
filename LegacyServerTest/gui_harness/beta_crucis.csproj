@@ -99,10 +99,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ControlVariable.cs" />
+    <Compile Include="Effects\FxSolid.cs" />
     <Compile Include="Engine.cs" />
+    <Compile Include="ExceptionMessage.cs" />
+    <Compile Include="Json.cs" />
     <Compile Include="Utility\ColorReal.cs" />
     <Compile Include="Effects\FxCandyCane.cs" />
-    <Compile Include="Effects\FxUtils.cs" />
     <Compile Include="GlimPanel.cs">
       <SubType>UserControl</SubType>
     </Compile>

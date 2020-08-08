@@ -1,0 +1,41 @@
+{
+	"Devices": [
+		{ "Name": "Window", "Hostname": "GlimSwarm-103", "PixelCount": 94 }
+	],
+	"Controls": [
+		{ "Name": "Luminance", "Type": "Ratio", "Default": 1.0 },
+		{ "Name": "Saturation", "Type": "Ratio", "Default": 1.0 }
+	],
+	"Sequences": [
+		{ "Devices": [ "Window" ], "Effects": [
+			{ "Class": "FxScale", "Parameters": {
+				"Luminance": { "Control": "Luminance" },
+				"Saturation": { "Control": "Saturation" }
+			}, "Sources": [
+				{ "Class": "FxRainbow", "Parameters": {
+					"HueCyclePixelLength": 94,
+					"HueSecondsPerCycle": 0.8
+				} }
+			] }
+		] },
+		{ "Name": "CometLeft", "Devices": [
+			{ "Device": "Window", "PixelStart": 55, "PixelCount": -48 }
+		], "Effects": [
+			//{ "Class": "FxComet" }
+		] },
+		{ "Name": "CometRight", "Devices": [
+			{ "Device": "Window", "PixelStart": 54, "PixelCount": 40 },
+			{ "Device": "Window", "PixelStart": 0, "PixelCount": 8 }
+		], "Effects": [
+			//{ "Class": "FxComet" }
+		] }
+	],
+	"Events":[
+		{ "Name": "Start", "Actions": [
+			{ "Effect": "Rainbow", "Action": "Start" }
+		] }
+	],
+	"Timeline": [
+		{ "At": 0, "Event": "Start" }
+	]
+}

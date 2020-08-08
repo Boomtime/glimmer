@@ -3,35 +3,34 @@
 	using System.Collections.Generic;
 	using System.Drawing;
 
-	class FxScale : IFx {
+	enum FxScaleOperator {
+		Multiply,
+		Add,
+		Ceiling,
+		Floor,
+		Subtract
+	}
 
-		readonly IFx mSrc;
+	class FxScale : IFxPipe {
 
-		public FxScale( IFx src ) {
+		IFx mSrc;
+
+		public FxScale() {
+			mSrc = new FxSolid { Colour = Color.White };
+		}
+
+		public FxScale( IFx src ) : this() {
 			mSrc = src;
-			Luminance = 1.0;
-			Saturation = 1.0;
-			Method = Function.Multiply;
 		}
 
-		public enum Function {
-			Multiply,
-			Add,
-			Ceiling,
-			Floor,
-			Subtract
-		}
+		[ConfigurableRatio]
+		public double Luminance { get; set; } = 1.0;
 
-		[ConfigurableDouble( Maximum = 1.0, Minimum = 0.0 )]
-		public double Luminance { get; set; }
-
-		[ConfigurableDouble( Maximum = 1.0, Minimum = 0.0 )]
-		public double Saturation { get; set; }
+		[ConfigurableRatio]
+		public double Saturation { get; set; } = 1.0;
 
 		[Configurable]
-		public Function Method { get; set; }
-
-		public bool IsRunning => mSrc.IsRunning;
+		public FxScaleOperator Operator { get; set; } = FxScaleOperator.Multiply;
 
 		IEnumerable<Color> MethodMultiply( IFxContext ctx ) {
 			foreach( ColorReal pix in mSrc.Execute( ctx ) ) {
@@ -73,18 +72,29 @@
 			}
 		}
 
+		IEnumerable<Color> Empty() {
+			yield break;
+		}
+
 		public IEnumerable<Color> Execute( IFxContext ctx ) {
-			switch( Method ) {
-				case Function.Add:
+			if( null == mSrc ) {
+				return Empty();
+			}
+			switch( Operator ) {
+				case FxScaleOperator.Add:
 					return MethodAdd( ctx );
-				case Function.Ceiling:
+				case FxScaleOperator.Ceiling:
 					return MethodCeiling( ctx );
-				case Function.Floor:
+				case FxScaleOperator.Floor:
 					return MethodFloor( ctx );
-				case Function.Subtract:
+				case FxScaleOperator.Subtract:
 					return MethodSubtract( ctx );
 			}
 			return MethodMultiply( ctx );
+		}
+
+		public void AddSource( IFx src ) {
+			mSrc = src;
 		}
 	}
 }

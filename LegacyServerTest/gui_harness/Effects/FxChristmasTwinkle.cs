@@ -12,8 +12,6 @@
 		public double LumHigh = 0.52;
 		public double Saturation = 0.55;
 
-		public bool IsRunning => true;
-
 		public IEnumerable<Color> Execute( IFxContext ctx ) {
 			var secondsPerCycle = ( 1.0 / CyclesPerSecond );
 			var posBase = ( ctx.TimeNow.TotalSeconds % secondsPerCycle ) / secondsPerCycle * 2;

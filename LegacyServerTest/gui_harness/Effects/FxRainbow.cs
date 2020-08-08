@@ -4,13 +4,11 @@
 
 	class FxRainbow : IFx {
 
-		[ConfigurableDouble( Minimum = 0.1, Maximum = 60 )]
-		public double HueSecondsPerCycle = 12.5;
+		[ConfigurableDouble( Min = 0.1, Max = 300 )]
+		public double HueSecondsPerCycle { get; set; } = 12.5;
 
-		[ConfigurableInteger( Minimum = 2, Maximum = 5000 )]
-		public int HueCyclePixelLength = 100;
-
-		public bool IsRunning => true;
+		[ConfigurableInteger( Min = 2, Max = 5000 )]
+		public int HueCyclePixelLength { get; set; } = 100;
 
 		public IEnumerable<Color> Execute( IFxContext ctx ) {
 			ColorReal rc = Color.Red; // any RGB primary color will do as a seed

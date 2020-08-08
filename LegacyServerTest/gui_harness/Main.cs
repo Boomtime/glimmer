@@ -1,13 +1,12 @@
 ﻿namespace ShadowCreatures.Glimmer {
-	using ShadowCreatures.Glimmer.Utility;
 	using System;
 	using System.Net;
 	using System.Windows.Forms;
 	using System.Diagnostics;
 	using System.Threading;
-	using System.Text.Json;
+    using ShadowCreatures.Glimmer.Json;
 
-	public partial class Main : Form {
+    public partial class Main : Form {
 		const int AutoHuntInterval = 1000;
 
 		public enum OutputFunc {
@@ -123,8 +122,18 @@
 		void XBtnLoad_Click( object sender, EventArgs e ) {
 			var dlg = new OpenFileDialog();
 			if( DialogResult.OK == dlg.ShowDialog() ) {
-				dlg.OpenFile();
-				// load doc
+				try {
+					using( var file = dlg.OpenFile() ) {
+						mCustomProgram = SequenceJson.Load( mEngine.Devices, file );
+					}
+				}
+				catch( Exception ex ) {
+					var msg = string.Format( "Error occurred loading JSON. The message was:\r\n{0}", ex.Message );
+					if( ex is JsonException ) {
+						msg += string.Format( "\r\n\r\nAt:\r\n{0}", ( ex as JsonException ).JsonPath.FullPath );
+					}
+					MessageBox.Show( msg, "Error loading JSON", MessageBoxButtons.OK, MessageBoxIcon.Error );
+				}
 			}
 		}
 

@@ -1,6 +1,7 @@
 ﻿namespace ShadowCreatures.Glimmer {
 	using ShadowCreatures.Glimmer.Effects;
 	using System;
+    using System.Collections.Generic;
     using System.Drawing;
 
     class SequenceParty : SequenceDefault {
@@ -9,7 +10,7 @@
 		/// <summary>internal descriptor of a device</summary>
 		class GlimDescriptor {
 			readonly IGlimPixelMap mPixelMap;
-			IFx mFxComet;
+			FxComet mFxComet;
 
 			public GlimDescriptor( GlimDevice device, Color partyColor ) {
 				Device = device;
@@ -29,7 +30,7 @@
 			}
 
 			public void StartComet( int pixelCount ) {
-				mFxComet = new FxComet( pixelCount ) { BaseColor = PartyColor };
+				mFxComet = new FxComet { BaseColor = PartyColor, PixelCount = pixelCount };
 			}
 
 			public readonly GlimDevice Device;
@@ -52,7 +53,7 @@
 		readonly FxScale mFxPerimeterRainbow;
 		readonly FxScale mFxStarlight;
 		readonly IFx mFxCannonTwinkle;
-		IFx mFxBarrel;
+		FxComet mFxBarrel;
 		TimeSpan? mButtonUpSynchronizeTimestamp;
 		GameState mGameState = GameState.Null;
 		TimeSpan mGameCoolDownStart;
@@ -65,8 +66,7 @@
 			// comets!
 			mGlimRedGun = new GlimDescriptor( deviceRed, Color.Red );
 			mGlimBlueGun = new GlimDescriptor( deviceBlue, Color.Blue );
-			var t = new FxComet( 50 ) { BaseColor = Color.FromArgb( 0xff, 0, 0xff ) };
-			mFxBarrel = t;
+			mFxBarrel = new FxComet { BaseColor = Color.FromArgb( 0xff, 0, 0xff ), PixelCount = 50 };
 			mFxCannonTwinkle = new FxStarlightTwinkle {
 				BaseColor = Color.FromArgb( 0xff, 0, 0xff ),
 				SpeedFactor = 15.0,
@@ -80,6 +80,12 @@
 
 			mFxPerimeterRainbow = new FxScale( new FxRainbow() );
 			mFxStarlight = new FxScale( new FxStarlightTwinkle { BaseColor = Color.Yellow } ) { Saturation = 0.3 };
+		}
+
+		IEnumerable<Color> BarrelColour() {
+			while( true ) {
+				yield return Color.Black;
+			}
 		}
 
 		public override void Execute() {
@@ -102,7 +108,7 @@
 			}
 			double lumscale = 0.0;
 			if( GameState.CoolDown == mGameState ) {
-				mPixelMapBarrel.Write( FxUtils.InfiniteColor( Color.Black ) );
+				mPixelMapBarrel.Write( BarrelColour() );
 				mPixelMapStars.Write( mFxCannonTwinkle.Execute( ctx ) );
 				// take 2 seconds to return to full glow
 				lumscale = ( ( CurrentTime - mGameCoolDownStart ).TotalSeconds - 1 ) / 2;
@@ -126,7 +132,7 @@
 				case GameState.SynchronizedShotsFired:
 					if( !mGlimBlueGun.CometIsRunning || !mGlimRedGun.CometIsRunning ) {
 						mGameState = GameState.BarrelShotFired;
-						mFxBarrel = new FxComet( 50 ) { BaseColor = Color.FromArgb( 0xff, 0, 0xff ) };
+						mFxBarrel = new FxComet { BaseColor = Color.FromArgb( 0xff, 0, 0xff ), PixelCount = 50 };
 					}
 					break;
 			}

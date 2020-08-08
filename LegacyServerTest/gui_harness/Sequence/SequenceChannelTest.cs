@@ -6,29 +6,31 @@
     class SequenceChannelTest : SequenceDefault {
 		readonly IGlimPixelMap mMap;
 		readonly Action<Color> fClr;
+		readonly FxSolid mColour;
 
 		public SequenceChannelTest( GlimManager mgr, Action<Color> clr ) {
 			fClr = clr;
 			mMap = mgr.CreateCompletePixelMap();
 			Dwell = 1000;
+			mColour = new FxSolid();
 		}
 
 		public int Dwell { get; set; }
 
 		public override void Execute() {
+			var ctx = MakeCurrentContext();
 			double pos = 1000 * ( CurrentTime.TotalSeconds % ( 3 * Dwell / 1000 ) );
-			Color clr;
 			if( pos < Dwell ) {
-				clr = Color.Red;
+				mColour.Colour = Color.Red;
 			}
 			else if( pos < Dwell * 2 ) {
-				clr = Color.FromArgb( 0, 0xff, 0 ); // Color.Green is not pure;
+				mColour.Colour = Color.FromArgb( 0, 0xff, 0 ); // Color.Green is not pure;
 			}
 			else {
-				clr = Color.Blue;
+				mColour.Colour = Color.Blue;
 			}
-			fClr( clr );
-			mMap.Write( FxUtils.InfiniteColor( clr ) );
+			fClr( mColour.Colour );
+			mMap.Write( mColour.Execute( ctx ) );
 		}
 	}
 }

@@ -10,8 +10,8 @@
 		readonly IGlimPixelMap mMapPerimeter;
 		readonly IGlimPixelMap mEdgeLeft;
 		readonly IGlimPixelMap mEdgeRight;
-		IFx mFxCometLeft = null;
-		IFx mFxCometRight = null;
+		FxComet mFxCometLeft = null;
+		FxComet mFxCometRight = null;
 
 		public SequenceTestWindow( GlimDevice window ) {
 			mMapPerimeter = new GlimPixelMap.Factory { { window, 0, 94 } }.Compile();
@@ -30,8 +30,18 @@
 
 		public override void ButtonStateChanged( IGlimDevice src, ButtonStatus btn ) {
 			if( ButtonStatus.Up == btn ) {
-				mFxCometLeft = new FxComet( mEdgeLeft.PixelCount + 10 ) { BaseColor = Color.White, TailPixelLength = 10, SpeedPixelsPerSecond = 40 };
-				mFxCometRight = new FxComet( mEdgeRight.PixelCount + 10 ) { BaseColor = Color.White, TailPixelLength = 10, SpeedPixelsPerSecond = 40 };
+				mFxCometLeft = new FxComet {
+					PixelCount = mEdgeLeft.PixelCount + 10,
+					BaseColor = Color.White,
+					TailPixelLength = 10,
+					SpeedPixelsPerSecond = 40
+				};
+				mFxCometRight = new FxComet {
+					PixelCount = mEdgeRight.PixelCount + 10,
+					BaseColor = Color.White,
+					TailPixelLength = 10,
+					SpeedPixelsPerSecond = 40
+				};
 			}
 		}
 

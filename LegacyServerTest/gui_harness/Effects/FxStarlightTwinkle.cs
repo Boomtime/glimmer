@@ -11,21 +11,19 @@
 
 		/// <summary>base colour of starlight</summary>
 		[Configurable]
-		public Color BaseColor = Color.White;
+		public Color BaseColor { get; set; } = Color.White;
 
 		/// <summary>minimum twinkle luma</summary>
 		[Configurable]
-		public double LuminanceMinima = 0.00;
+		public double LuminanceMinima { get; set; } = 0.00;
 
 		/// <summary>maximum twinkle luma</summary>
 		[Configurable]
-		public double LuminanceMaxima = 0.40;
+		public double LuminanceMaxima { get; set; } = 0.40;
 
-		/// <summary>speed divisor</summary>
-		[ConfigurableDouble( Minimum = 0.1, Maximum = 5.0 )]
-		public double SpeedFactor = 1.0;
-
-		public bool IsRunning => true;
+		/// <summary>period divisor</summary>
+		[ConfigurableDouble( Min = 0.1, Max = 5.0 )]
+		public double SpeedFactor { get; set; } = 1.0;
 
 		/// <summary>a sort-of hash that is 0-1</summary>
 		double GetPixelHash( int pixel ) {
