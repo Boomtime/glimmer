@@ -11,8 +11,8 @@
 		}
 
 		public override void Execute() {
-			mFxRainbowCycle.Luminance = Luminance;
-			mFxRainbowCycle.Saturation = Saturation;
+			mFxRainbowCycle.Luminance = Luminance.Value;
+			mFxRainbowCycle.Saturation = Saturation.Value;
 			mMap.Write( mFxRainbowCycle.Execute( MakeCurrentContext() ) );
 		}
 	}

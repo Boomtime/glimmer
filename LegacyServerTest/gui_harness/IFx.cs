@@ -61,7 +61,7 @@
 				if( throwOnError && vorig != vclamp ) {
 					throw new ArgumentOutOfRangeException( pi.Name, string.Format( "Expecting value between {0} and {1}", Min, Max ) );
 				}
-				vclamp = Min + ( ( vclamp - Min ) % Step ) * Step;
+				vclamp = Min + ( ( vclamp - Min ) / Step ) * Step;
 				pi.SetValue( dst, vclamp );
 			}
 			catch( Exception ) {

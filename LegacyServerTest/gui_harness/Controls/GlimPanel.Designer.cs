@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(GlimPanel));
 			this.cWifi = new System.Windows.Forms.PictureBox();
 			this.cName = new System.Windows.Forms.Label();
 			this.panel1 = new System.Windows.Forms.Panel();
@@ -33,11 +32,9 @@
 			// 
 			// cWifi
 			// 
-			this.cWifi.Image = ((System.Drawing.Image)(resources.GetObject("cWifi.Image")));
 			this.cWifi.Location = new System.Drawing.Point(3, 3);
 			this.cWifi.Name = "cWifi";
 			this.cWifi.Size = new System.Drawing.Size(48, 48);
-			this.cWifi.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
 			this.cWifi.TabIndex = 0;
 			this.cWifi.TabStop = false;
 			// 

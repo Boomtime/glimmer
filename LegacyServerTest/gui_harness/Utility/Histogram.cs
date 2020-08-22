@@ -55,6 +55,7 @@
 		readonly Color colourCanvas = Color.Transparent;
 		readonly Color colourFill = Color.LightGreen;
 		readonly Color colourLine = Color.DarkGreen;
+		readonly Color colourWarning = Color.Red;
 
 		public Histogram( Size sz ) {
 			size = sz;
@@ -77,16 +78,26 @@
 			}
 			int x = size.Width - 1;
 			int y;
+			double pt;
 			var bmp = new Bitmap( size.Width, size.Height );
 			using( var gfx = Graphics.FromImage( bmp ) ) {
 				gfx.DrawImage( prev, 0, 0, new Rectangle { X = newSampleCount, Y = 0, Width = size.Width - newSampleCount, Height = size.Height }, GraphicsUnit.Pixel );
 				using( var fill = new SolidBrush( colourFill ) ) {
 					using( var canvas = new SolidBrush( colourCanvas ) ) {
-						foreach( var pt in data ) {
+						foreach( var pinv in data ) {
+							pt = pinv;
+							if( pt < 0 ) {
+								pt = 0 - pt;
+							}
 							y = size.Height - (int)( pt * (double)size.Height );
 							gfx.FillRectangle( canvas, x, 0, 1, y );
 							gfx.FillRectangle( fill, x, y, 1, size.Height - y );
 							bmp.SetPixel( x, Math.Min( y, size.Height - 1 ), colourLine );
+							if( pinv < 0 ) {
+								using( var pen = new Pen( colourWarning, 1 ) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dot } ) {
+									gfx.DrawLine( pen, x, 0, x, size.Height - 1 );
+								}
+							}
 							if( 0 == x ) {
 								break;
 							}

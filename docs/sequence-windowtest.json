@@ -14,7 +14,7 @@
 			}, "Sources": [
 				{ "Class": "FxRainbow", "Parameters": {
 					"HueCyclePixelLength": 94,
-					"HueSecondsPerCycle": 0.8
+					"HueSecondsPerCycle": 2
 				} }
 			] }
 		] },

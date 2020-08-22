@@ -29,7 +29,7 @@
 		{
 			this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
 			this.cDevices = new System.Windows.Forms.FlowLayoutPanel();
-			this.flowLayoutPanel2 = new System.Windows.Forms.FlowLayoutPanel();
+			this.ctlSequenceControlsPanel = new System.Windows.Forms.FlowLayoutPanel();
 			this.cStarlightLum = new System.Windows.Forms.TrackBar();
 			this.cLuminance = new System.Windows.Forms.TrackBar();
 			this.cSaturation = new System.Windows.Forms.TrackBar();
@@ -50,7 +50,7 @@
 			this.cAutoHunt = new System.Windows.Forms.CheckBox();
 			this.ctl_status = new System.Windows.Forms.StatusStrip();
 			this.tableLayoutPanel1.SuspendLayout();
-			this.flowLayoutPanel2.SuspendLayout();
+			this.ctlSequenceControlsPanel.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)(this.cStarlightLum)).BeginInit();
 			((System.ComponentModel.ISupportInitialize)(this.cLuminance)).BeginInit();
 			((System.ComponentModel.ISupportInitialize)(this.cSaturation)).BeginInit();
@@ -71,7 +71,7 @@
 			this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 40F));
 			this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 60F));
 			this.tableLayoutPanel1.Controls.Add(this.cDevices, 0, 0);
-			this.tableLayoutPanel1.Controls.Add(this.flowLayoutPanel2, 0, 1);
+			this.tableLayoutPanel1.Controls.Add(this.ctlSequenceControlsPanel, 0, 1);
 			this.tableLayoutPanel1.Controls.Add(this.flowLayoutPanel3, 1, 0);
 			this.tableLayoutPanel1.Controls.Add(this.flowLayoutPanel4, 1, 2);
 			this.tableLayoutPanel1.Controls.Add(this.flowLayoutPanel5, 0, 2);
@@ -94,17 +94,17 @@
 			this.cDevices.Size = new System.Drawing.Size(621, 548);
 			this.cDevices.TabIndex = 1;
 			// 
-			// flowLayoutPanel2
+			// ctlSequenceControlsPanel
 			// 
-			this.flowLayoutPanel2.Controls.Add(this.cStarlightLum);
-			this.flowLayoutPanel2.Controls.Add(this.cLuminance);
-			this.flowLayoutPanel2.Controls.Add(this.cSaturation);
-			this.flowLayoutPanel2.Dock = System.Windows.Forms.DockStyle.Fill;
-			this.flowLayoutPanel2.Location = new System.Drawing.Point(4, 563);
-			this.flowLayoutPanel2.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-			this.flowLayoutPanel2.Name = "flowLayoutPanel2";
-			this.flowLayoutPanel2.Size = new System.Drawing.Size(621, 490);
-			this.flowLayoutPanel2.TabIndex = 3;
+			this.ctlSequenceControlsPanel.Controls.Add(this.cStarlightLum);
+			this.ctlSequenceControlsPanel.Controls.Add(this.cLuminance);
+			this.ctlSequenceControlsPanel.Controls.Add(this.cSaturation);
+			this.ctlSequenceControlsPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+			this.ctlSequenceControlsPanel.Location = new System.Drawing.Point(4, 563);
+			this.ctlSequenceControlsPanel.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+			this.ctlSequenceControlsPanel.Name = "ctlSequenceControlsPanel";
+			this.ctlSequenceControlsPanel.Size = new System.Drawing.Size(621, 490);
+			this.ctlSequenceControlsPanel.TabIndex = 3;
 			// 
 			// cStarlightLum
 			// 
@@ -330,8 +330,8 @@
 			this.Text = "Beta Crucis";
 			this.Load += new System.EventHandler(this.XMainLoad);
 			this.tableLayoutPanel1.ResumeLayout(false);
-			this.flowLayoutPanel2.ResumeLayout(false);
-			this.flowLayoutPanel2.PerformLayout();
+			this.ctlSequenceControlsPanel.ResumeLayout(false);
+			this.ctlSequenceControlsPanel.PerformLayout();
 			((System.ComponentModel.ISupportInitialize)(this.cStarlightLum)).EndInit();
 			((System.ComponentModel.ISupportInitialize)(this.cLuminance)).EndInit();
 			((System.ComponentModel.ISupportInitialize)(this.cSaturation)).EndInit();
@@ -352,7 +352,7 @@
 		private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
 		private System.Windows.Forms.StatusStrip ctl_status;
 		private System.Windows.Forms.TrackBar cLuminance;
-		private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel2;
+		private System.Windows.Forms.FlowLayoutPanel ctlSequenceControlsPanel;
 		private System.Windows.Forms.TrackBar cStarlightLum;
 		private System.Windows.Forms.TrackBar cSaturation;
 		private System.Windows.Forms.CheckBox cAutoHunt;

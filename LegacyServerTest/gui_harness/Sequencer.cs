@@ -17,24 +17,18 @@
 		/// <summary>set current sequence time, when set it must not go backwards!</summary>
 		TimeSpan CurrentTime { get; set; }
 
-		/// <summary>global hack</summary>
-		double Luminance { 
-			set;
-		}
-		/// <summary>global hack</summary>
-		double Saturation {
-			set;
-		}
+		IControlDictionary Controls { get; }
+	}
+
+	class SequenceControlDictionary : Dictionary<string, ControlVariable>, IControlDictionary {
 	}
 
 	abstract class SequenceDefault : ISequence {
-		public virtual double Luminance {
-			set;
-			protected get;
+		public ControlVariableRatio Luminance {
+			get => Controls["Luminance"] as ControlVariableRatio;
 		}
-		public virtual double Saturation {
-			set;
-			protected get;
+		public ControlVariableRatio Saturation {
+			get => Controls["Saturation"] as ControlVariableRatio;
 		}
 
 		public virtual void ButtonStateChanged( IGlimDevice src, ButtonStatus btn ) {
@@ -47,20 +41,14 @@
 		protected IFxContext MakeCurrentContext() {
 			return new FxContextSimple( CurrentTime );
 		}
+
+		public virtual IControlDictionary Controls { get; } = new SequenceControlDictionary {
+			{ "Luminance", new ControlVariableRatio { Value = 1.0 } },
+			{ "Saturation", new ControlVariableRatio { Value = 1.0 } }
+		};
 	}
 
-	static class ControlExtensions {
-
-		static public void Subscribe( this ControlVariable variable, object sub, PropertyInfo pi ) {
-			var ca = pi.GetCustomAttribute<ConfigurableAttribute>( true );
-			// grab the current value
-			ca.SetObjectProperty( sub, pi, variable.Value, false );
-			// set up for change triggers
-			variable.ValueChanged += ( s, a ) => ca.SetObjectProperty( sub, pi, a.Value, false );
-		}
-	}
-
-	class SequenceConstructible : SequenceDefault {
+	class SequenceConstructible : ISequence {
 
 		class FxSequence {
 			readonly List<IFx> mFx = new List<IFx>();
@@ -78,6 +66,14 @@
 
 		readonly List<FxSequence> mSequences = new List<FxSequence>();
 		readonly Dictionary<string, FxSequence> mNamedSequences = new Dictionary<string, FxSequence>();
+		readonly SequenceControlDictionary mControls = new SequenceControlDictionary();
+
+		public void AddControl( string name, ControlVariable ctl ) {
+			if( mControls.ContainsKey( name ) ) {
+				throw new ExceptionMessage( "Control name '{0}' occurs twice.", name );
+			}
+			mControls.Add( name, ctl );
+		}
 
 		public void AddSequence( string name, IGlimPixelMap map, IEnumerable<IFx> fx ) {
 			var seq = new FxSequence( map, fx );
@@ -90,10 +86,17 @@
 			}
 		}
 
-		public override void Execute() {
-			var ctx = MakeCurrentContext();
+		public TimeSpan CurrentTime { get; set; }
+
+		public void ButtonStateChanged( IGlimDevice src, ButtonStatus btn ) {
+		}
+
+		public void Execute() {
+			var ctx = new FxContextSimple( CurrentTime );
 			mSequences.ForEach( s => s.Execute( ctx ) );
 		}
+
+		public IControlDictionary Controls => mControls;
 	}
 
 	class SequenceJson {
@@ -131,19 +134,14 @@
 			}
 		}
 
-		class ControlsDictionary : Dictionary<string, ControlVariable> {
-		}
-
 		readonly GlimManager Manager;
 		readonly SequenceConstructible Program;
 		readonly GlimAliasDictionary Devices;
-		readonly ControlsDictionary Controls;
 
 		SequenceJson( GlimManager mgr ) {
 			Manager = mgr;
 			Program = new SequenceConstructible();
 			Devices = new GlimAliasDictionary();
-			Controls = new ControlsDictionary();
 		}
 
 		GlimDevice JsonParseDevice( JsonObject jdevice, out string name ) {
@@ -193,8 +191,7 @@
 		}
 
 		void SetEffectProperty( IFx fx, string classname, string property, JsonValue jsonv ) {
-			var fxtype = fx.GetType();
-			var pi = fxtype.GetRuntimeProperty( property );
+			var pi = fx.GetType().GetRuntimeProperty( property );
 			if( null == pi ) {
 				throw new JsonEffectParameterUnknownException( classname, jsonv );
 			}
@@ -206,10 +203,13 @@
 			// a JSON object as the value is always some complex solution, probably a control
 			if( JsonValueKind.Object == jsonv.ValueKind ) {
 				var vctl = jsonv.AsObject()["Control"];
-				if( !Controls.TryGetValue( vctl.AsString(), out ControlVariable ctl ) ) {
+				if( !Program.Controls.TryGetValue( vctl.AsString(), out ControlVariable ctl ) ) {
 					throw new JsonEffectParameterControlReferenceUnknown( vctl );
 				}
-				ctl.Subscribe( fx, pi );
+				// grab the current value
+				ca.SetObjectProperty( fx, pi, ctl.Value, false );
+				// set up for change triggers
+				ctl.ValueChanged += ( s, a ) => ca.SetObjectProperty( fx, pi, a.Value, false );
 			}
 			else {
 				// the property determines JSON interpretation
@@ -270,10 +270,7 @@
 						break;
 					case JsonValueKind.Object:
 						var jobj = jdev.AsObject();
-						pmf.Add(
-							Devices.FromJsonAlias( jobj["Device"] ),
-							(int)jobj["PixelStart"].AsNumber(),
-							(int)jobj["PixelCount"].AsNumber() );
+						pmf.Add( Devices.FromJsonAlias( jobj["Device"] ), (int)jobj["PixelStart"].AsNumber(), (int)jobj["PixelCount"].AsNumber() );
 						break;
 					default:
 						throw new JsonKeyWrongTypeException( jdev, "Object", "String" );
@@ -330,11 +327,12 @@
 				case ControlType.Colour:
 					// @todo: implement colour parsing
 					ctl = new ControlVariableColour();
-					break;
+					throw new NotImplementedException( "Nopeity nope.. haven't implemented Colour variables" );
+					//break;
 				default:
 					throw new ArgumentException( "Unknown ControlType value" );
 			}
-			Controls.Add( name, ctl );
+			Program.AddControl( name, ctl );
 		}
 
 		ISequence Load( Stream file ) {

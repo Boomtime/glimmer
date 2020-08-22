@@ -18,14 +18,8 @@
 			mEdgeLeft = new GlimPixelMap.Factory { { window, 55, -48 } }.Compile();
 			mEdgeRight = new GlimPixelMap.Factory { { window, 54, 40 }, { window, 0, 8 } }.Compile();
 			window.SetButtonColour( Color.Black, new ColorReal( Color.White ) { Luminance = 0.2 }, 1000, Color.White );
-		}
-
-		public override double Luminance {
-			set { mFxPerimeter.Luminance = value; }
-		}
-
-		public override double Saturation {
-			set { mFxPerimeter.Saturation = value; }
+			Luminance.ValueChanged += ( s, e ) => mFxPerimeter.Luminance = e.Value;
+			Saturation.ValueChanged += ( s, e ) => mFxPerimeter.Saturation = e.Value;
 		}
 
 		public override void ButtonStateChanged( IGlimDevice src, ButtonStatus btn ) {

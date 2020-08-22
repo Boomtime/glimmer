@@ -164,7 +164,7 @@
 						double markPeriod = ( progTime.Elapsed - lastGraphPin ).TotalMilliseconds;
 						double ratioUsed = 1.0 - ( (double)freeTime.ElapsedMilliseconds / markPeriod );
 						lock( mWorkerFrameHistogram ) {
-							mWorkerFrameHistogram.PushSample( ratioUsed );
+							mWorkerFrameHistogram.PushSample( Math.Max( 0, ratioUsed ) );
 						}
 						lastGraphPin = progTime.Elapsed;
 						nextGraphPin = lastGraphPin + GraphPinInterval;

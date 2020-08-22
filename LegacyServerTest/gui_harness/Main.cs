@@ -5,6 +5,7 @@
 	using System.Diagnostics;
 	using System.Threading;
     using ShadowCreatures.Glimmer.Json;
+	using ShadowCreatures.Glimmer.Controls;
 
     public partial class Main : Form {
 		const int AutoHuntInterval = 1000;
@@ -59,9 +60,6 @@
 			AddFunctionRadio( "christmas", OutputFunc.Christmas );
 			AddFunctionRadio( "window test", OutputFunc.WindowTest );
 			AddFunctionRadio( "custom...", OutputFunc.Custom );
-
-			cLuminance.ValueChanged += ( s, e ) => mCurrentProgram.Luminance = UILuminanceMultiplier;
-			cSaturation.ValueChanged += ( s, e ) => mCurrentProgram.Saturation = UISaturationMultiplier;
 
 			FormClosing += XMainFormClosing;
 		}
@@ -173,6 +171,36 @@
 			}
 		}
 
+		static Control MakeUIControlForVariable( string name, ControlVariable v ) {
+			switch( v.Type ) {
+				case ControlType.Colour:
+					break;
+				case ControlType.Double:
+				case ControlType.Integer:
+				case ControlType.Ratio:
+					var vn = v as ControlVariableNumber;
+					var ltb = new LabelledTrackBar {
+						Text = name,
+						Maximum = vn.Max,
+						Minimum = vn.Min,
+						Value = vn.Value
+					};
+					ltb.ValueChanged += ( s, e ) => { v.Value = ( s as LabelledTrackBar ).Value; };
+					v.ValueChanged += ( s, e ) => { ltb.Value = e.Value; };
+					return ltb;
+			}
+			throw new NotImplementedException( string.Format( "ControlVariable {0} has no UI", v.Type.ToString() ) );
+		}
+
+		void RebuildSequenceControlsPanel() {
+			ctlSequenceControlsPanel.SuspendLayout();
+			ctlSequenceControlsPanel.Controls.Clear();
+			foreach( var ctlv in mCurrentProgram.Controls ) {
+				ctlSequenceControlsPanel.Controls.Add( MakeUIControlForVariable( ctlv.Key, ctlv.Value ) );
+			}
+			ctlSequenceControlsPanel.ResumeLayout();
+		}
+
 		void XFuncCheckChanged( object sender, EventArgs e ) {
 			var rb = sender as RadioButton;
 			if( !rb.Checked ) {
@@ -207,8 +235,9 @@
 					mCurrentProgram = mCustomProgram;
 					break;
 			}
-			mCurrentProgram.Luminance = UILuminanceMultiplier;
-			mCurrentProgram.Saturation = UISaturationMultiplier;
+			RebuildSequenceControlsPanel();
+			//mCurrentProgram.Luminance = UILuminanceMultiplier;
+			//mCurrentProgram.Saturation = UISaturationMultiplier;
 			// program changed..
 			mEngine.Sequence = mCurrentProgram;
 		}

@@ -100,6 +100,16 @@
 			return AssertType( JsonValueKind.Number ).GetDouble();
 		}
 
+		public bool AsBoolean() {
+			switch( ValueKind ) {
+				case JsonValueKind.True:
+					return true;
+				case JsonValueKind.False:
+					return false;
+			}
+			throw new JsonKeyWrongTypeException( this, "True or False" );
+		}
+
 		public JsonObject AsObject() {
 			return new JsonObject( Name, AssertType( JsonValueKind.Object ), Parent );
 		}

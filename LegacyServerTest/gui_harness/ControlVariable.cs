@@ -2,20 +2,19 @@
 	using System;
     using System.Collections.Generic;
     using System.Drawing;
-    using System.Reflection;
 
-    enum ControlType {
+    public enum ControlType {
 		/// <summary>Int32, can have min/max/step</summary>
 		Integer,
 		/// <summary>shothand for double with limit 0->1, don't try to read it as an Int32</summary>
 		Ratio,
-		/// <summary>double, can have min/max/step, may accept Int32 as get/set</summary>
+		/// <summary>double, can have min/max, may accept Int32 as get/set</summary>
 		Double,
 		/// <summary>exactly 1 colour, always System.Drawing.Color</summary>
 		Colour,
 	}
 
-	class ControlVariableEventArgs : EventArgs {
+	public class ControlVariableEventArgs : EventArgs {
 		public ControlVariableEventArgs( dynamic v ) {
 			Value = v;
 		}
@@ -23,10 +22,10 @@
 		public dynamic Value { get; }
 	}
 
-	delegate void ControlVariableChanged( object s, ControlVariableEventArgs a );
+	public delegate void ControlVariableChanged( object s, ControlVariableEventArgs a );
 
 	/// <summary>control variables are means of storing scalar data during sequence runtime, possibly user visible and controllable</summary>
-	abstract class ControlVariable {
+	public abstract class ControlVariable {
 		public abstract ControlType Type { get; }
 
 		dynamic mDV;
@@ -50,7 +49,16 @@
 		public event ControlVariableChanged ValueChanged;
 	}
 
-	class ControlVariableInteger : ControlVariable {
+	public interface IControlDictionary : IReadOnlyDictionary<string, ControlVariable> {
+	}
+
+	public abstract class ControlVariableNumber : ControlVariable {
+		public abstract dynamic Min { get; }
+
+		public abstract dynamic Max { get; }
+	}
+
+	class ControlVariableInteger : ControlVariableNumber {
 
 		public ControlVariableInteger( int min, int max, int step ) {
 			Min = min;
@@ -58,9 +66,9 @@
 			Step = step;
 		}
 
-		public int Min { get; }
+		public override dynamic Min { get; }
 
-		public int Max { get; }
+		public override dynamic Max { get; }
 
 		public int Step { get; }
 
@@ -71,20 +79,20 @@
 		}
 	}
 
-	class ControlVariableDouble : ControlVariable {
+	class ControlVariableDouble : ControlVariableNumber {
 		public ControlVariableDouble( double min, double max ) {
 			Min = min;
 			Max = max;
 		}
 
-		public double Min { get; }
+		public override dynamic Min { get; }
 
-		public double Max { get; }
+		public override dynamic Max { get; }
 
 		public override ControlType Type => ControlType.Double;
 
 		protected override dynamic Constrain( dynamic v ) {
-			return Math.Min( Math.Max( (int)v, Min ), Max );
+			return Math.Min( Math.Max( (double)v, Min ), Max );
 		}
 	}
 

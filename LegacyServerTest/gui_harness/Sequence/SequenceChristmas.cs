@@ -1,8 +1,9 @@
 ﻿namespace ShadowCreatures.Glimmer {
 	using ShadowCreatures.Glimmer.Effects;
 	using System;
+    using System.Reflection;
 
-	class SequenceChristmas : SequenceDefault {
+    class SequenceChristmas : SequenceDefault {
 		readonly IGlimPixelMap mPixelMap;
 		readonly FxScale mFxTwinkle = new FxScale( new FxChristmasTwinkle() );
 		readonly FxScale mFxRainbow = new FxScale( new FxRainbow() );
@@ -10,13 +11,8 @@
 
 		public SequenceChristmas( GlimManager mgr ) {
 			mPixelMap = mgr.CreateCompletePixelMap();
-		}
-
-		public override double Luminance {
-			set { mFxRainbow.Luminance = mFxTwinkle.Luminance = value; }
-		}
-		public override double Saturation {
-			set { mFxRainbow.Saturation = mFxTwinkle.Saturation = value; }
+			Luminance.ValueChanged += ( s, e ) => mFxRainbow.Luminance = mFxTwinkle.Luminance = e.Value;
+			Saturation.ValueChanged += ( s, e ) => mFxRainbow.Saturation = mFxTwinkle.Saturation = e.Value;
 		}
 
 		public override void Execute() {

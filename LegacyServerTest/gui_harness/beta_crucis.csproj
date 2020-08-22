@@ -99,6 +99,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Controls\LabelledTrackBar.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Controls\LabelledTrackBar.Designer.cs">
+      <DependentUpon>LabelledTrackBar.cs</DependentUpon>
+    </Compile>
     <Compile Include="ControlVariable.cs" />
     <Compile Include="Effects\FxSolid.cs" />
     <Compile Include="Engine.cs" />
@@ -106,10 +112,10 @@
     <Compile Include="Json.cs" />
     <Compile Include="Utility\ColorReal.cs" />
     <Compile Include="Effects\FxCandyCane.cs" />
-    <Compile Include="GlimPanel.cs">
+    <Compile Include="Controls\GlimPanel.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="GlimPanel.Designer.cs">
+    <Compile Include="Controls\GlimPanel.Designer.cs">
       <DependentUpon>GlimPanel.cs</DependentUpon>
     </Compile>
     <Compile Include="IFx.cs" />
@@ -139,7 +145,10 @@
     <Compile Include="Sequence\SequenceTestWindow.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utility\Histogram.cs" />
-    <EmbeddedResource Include="GlimPanel.resx">
+    <EmbeddedResource Include="Controls\LabelledTrackBar.resx">
+      <DependentUpon>LabelledTrackBar.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Controls\GlimPanel.resx">
       <DependentUpon>GlimPanel.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Main.resx">
@@ -173,6 +182,7 @@
   <ItemGroup>
     <None Include="Resources\wifi-icon.png" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

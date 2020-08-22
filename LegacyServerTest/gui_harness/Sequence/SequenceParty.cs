@@ -91,7 +91,7 @@
 		public override void Execute() {
 			var ctx = MakeCurrentContext();
 			mFxPerimeterRainbow.Luminance = PerimeterLuminanceMultiplier;
-			mFxPerimeterRainbow.Saturation = Saturation;
+			mFxPerimeterRainbow.Saturation = Saturation.Value;
 			mPixelMapPerimeter.Write( mFxPerimeterRainbow.Execute( ctx ) );
 			mFxStarlight.Luminance = LuminanceStarlightMultiplier;
 			mPixelMapStars.Write( mFxStarlight.Execute( ctx ) );
@@ -193,10 +193,10 @@
 				switch( mGameState ) {
 					case GameState.Null:
 					case GameState.SynchronizedShotsFired:
-						return Luminance;
+						return Luminance.Value;
 				}
 				// take 2 seconds to return to full glow
-				return Luminance * ( ( CurrentTime - mGameCoolDownStart ).TotalSeconds - 1 ) / 2;
+				return Luminance.Value * ( ( CurrentTime - mGameCoolDownStart ).TotalSeconds - 1 ) / 2;
 			}
 		}
 
