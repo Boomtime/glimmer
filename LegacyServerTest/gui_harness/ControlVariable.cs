@@ -2,11 +2,14 @@
 	using System;
     using System.Collections.Generic;
     using System.Drawing;
+    using System.Windows.Forms;
 
     public enum ControlType {
+		/// <summary>bool</summary>
+		Boolean,
 		/// <summary>Int32, can have min/max/step</summary>
 		Integer,
-		/// <summary>shothand for double with limit 0->1, don't try to read it as an Int32</summary>
+		/// <summary>shothand for double with limit 0->1</summary>
 		Ratio,
 		/// <summary>double, can have min/max, may accept Int32 as get/set</summary>
 		Double,
@@ -14,51 +17,68 @@
 		Colour,
 	}
 
-	public class ControlVariableEventArgs : EventArgs {
-		public ControlVariableEventArgs( dynamic v ) {
-			Value = v;
-		}
+	public interface IControlVariable {
+		ControlType Type { get; }
 
-		public dynamic Value { get; }
+		dynamic Value { get; }
+
+		event EventHandler ValueChanged;
+
+		Control MakeUIControl( string label );
 	}
 
-	public delegate void ControlVariableChanged( object s, ControlVariableEventArgs a );
+	public interface IControlVariable<T> : IControlVariable {
+		new T Value { get; set; }
+	}
 
-	/// <summary>control variables are means of storing scalar data during sequence runtime, possibly user visible and controllable</summary>
-	public abstract class ControlVariable {
+	public abstract class ControlVariable<T> : IControlVariable<T> {
 		public abstract ControlType Type { get; }
 
-		dynamic mDV;
+		T mValue;
 
-		protected abstract dynamic Constrain( dynamic v );
-
-		public dynamic Value {
+		public T Value {
 			get {
-				return mDV;
+				return mValue;
 			}
 			set {
 				// want to force the local dv to retain the correct type
 				// that is, clients who call "get" should observe appropriate type
 				// clients that call "set" are forced to behave
-				mDV = Constrain( value );
+				mValue = Constrain( value );
 				var h = ValueChanged;
-				h?.Invoke( this, new ControlVariableEventArgs( mDV ) );
+				h?.Invoke( this, EventArgs.Empty );
 			}
 		}
 
-		public event ControlVariableChanged ValueChanged;
+		dynamic IControlVariable.Value => Value;
+
+		public event EventHandler ValueChanged;
+
+		protected virtual T Constrain( T v ) {
+			return v;
+		}
+
+		public abstract Control MakeUIControl( string label );
 	}
 
-	public interface IControlDictionary : IReadOnlyDictionary<string, ControlVariable> {
+	public interface IControlDictionary : IReadOnlyDictionary<string, IControlVariable> {
 	}
 
-	public abstract class ControlVariableNumber : ControlVariable {
-		public abstract dynamic Min { get; }
+	class ControlVariableBoolean : ControlVariable<bool> {
+		public override ControlType Type => ControlType.Boolean;
 
-		public abstract dynamic Max { get; }
+		public override Control MakeUIControl( string label ) {
+			throw new NotImplementedException();
+		}
 	}
 
-	class ControlVariableInteger : ControlVariableNumber {
+	public abstract class ControlVariableNumber<T> : ControlVariable<T> where T : struct {
+		public abstract T Min { get; }
+
+		public abstract T Max { get; }
+	}
+
+	class ControlVariableInteger : ControlVariableNumber<int> {
 
 		public ControlVariableInteger( int min, int max, int step ) {
 			Min = min;
@@ -66,47 +86,57 @@
 			Step = step;
 		}
 
-		public override dynamic Min { get; }
+		public override ControlType Type => ControlType.Integer;
 
-		public override dynamic Max { get; }
+		public override int Min { get; }
+
+		public override int Max { get; }
 
 		public int Step { get; }
 
-		public override ControlType Type => ControlType.Integer;
+		protected override int Constrain( int v ) {
+			return Min + ( ( ( Math.Min( Math.Max( v, Min ), Max ) - Min ) / Step ) * Step );
+		}
 
-		protected override dynamic Constrain( dynamic v ) {
-			return Min + ( ( Math.Min( Math.Max( (int)v, Min ), Max ) % Step ) * Step );
+		public override Control MakeUIControl( string label ) {
+			return new Controls.UIControlVariableInteger { Text = label, Variable = this };
 		}
 	}
 
-	class ControlVariableDouble : ControlVariableNumber {
+	class ControlVariableDouble : ControlVariableNumber<double> {
 		public ControlVariableDouble( double min, double max ) {
 			Min = min;
 			Max = max;
 		}
 
-		public override dynamic Min { get; }
+		public override double Min { get; }
 
-		public override dynamic Max { get; }
+		public override double Max { get; }
 
 		public override ControlType Type => ControlType.Double;
 
-		protected override dynamic Constrain( dynamic v ) {
-			return Math.Min( Math.Max( (double)v, Min ), Max );
+		protected override double Constrain( double v ) {
+			return Math.Min( Math.Max( v, Min ), Max );
+		}
+
+		public override Control MakeUIControl( string label ) {
+			return new Controls.UIControlVariableDouble { Text = label, Variable = this };
 		}
 	}
 
 	class ControlVariableRatio : ControlVariableDouble {
+		public override ControlType Type => ControlType.Ratio;
+
 		public ControlVariableRatio()
 			: base( 0.0, 1.0 ) {
 		}
 	}
 
-	class ControlVariableColour : ControlVariable {
+	class ControlVariableColour : ControlVariable<Color> {
 		public override ControlType Type => ControlType.Colour;
 
-		protected override dynamic Constrain( dynamic v ) {
-			return (Color)v;
+		public override Control MakeUIControl( string label ) {
+			return new Controls.UIControlVariableColour { Text = label, Variable = this };
 		}
 	}
 }

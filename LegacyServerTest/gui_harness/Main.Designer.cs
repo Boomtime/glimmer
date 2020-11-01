@@ -30,15 +30,10 @@
 			this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
 			this.cDevices = new System.Windows.Forms.FlowLayoutPanel();
 			this.ctlSequenceControlsPanel = new System.Windows.Forms.FlowLayoutPanel();
-			this.cStarlightLum = new System.Windows.Forms.TrackBar();
-			this.cLuminance = new System.Windows.Forms.TrackBar();
-			this.cSaturation = new System.Windows.Forms.TrackBar();
 			this.flowLayoutPanel3 = new System.Windows.Forms.FlowLayoutPanel();
 			this.cFuncGroup = new System.Windows.Forms.GroupBox();
 			this.cFuncFlow = new System.Windows.Forms.FlowLayoutPanel();
 			this.panel1 = new System.Windows.Forms.Panel();
-			this.cColourPick = new System.Windows.Forms.Button();
-			this.cColourSelected = new System.Windows.Forms.Label();
 			this.cBtnLoad = new System.Windows.Forms.Button();
 			this.cBtnSave = new System.Windows.Forms.Button();
 			this.cPartyDebugShot = new System.Windows.Forms.Button();
@@ -50,10 +45,6 @@
 			this.cAutoHunt = new System.Windows.Forms.CheckBox();
 			this.ctl_status = new System.Windows.Forms.StatusStrip();
 			this.tableLayoutPanel1.SuspendLayout();
-			this.ctlSequenceControlsPanel.SuspendLayout();
-			((System.ComponentModel.ISupportInitialize)(this.cStarlightLum)).BeginInit();
-			((System.ComponentModel.ISupportInitialize)(this.cLuminance)).BeginInit();
-			((System.ComponentModel.ISupportInitialize)(this.cSaturation)).BeginInit();
 			this.flowLayoutPanel3.SuspendLayout();
 			this.cFuncGroup.SuspendLayout();
 			this.panel1.SuspendLayout();
@@ -87,6 +78,7 @@
 			// 
 			// cDevices
 			// 
+			this.cDevices.AutoScroll = true;
 			this.cDevices.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.cDevices.Location = new System.Drawing.Point(4, 5);
 			this.cDevices.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
@@ -96,51 +88,13 @@
 			// 
 			// ctlSequenceControlsPanel
 			// 
-			this.ctlSequenceControlsPanel.Controls.Add(this.cStarlightLum);
-			this.ctlSequenceControlsPanel.Controls.Add(this.cLuminance);
-			this.ctlSequenceControlsPanel.Controls.Add(this.cSaturation);
+			this.tableLayoutPanel1.SetColumnSpan(this.ctlSequenceControlsPanel, 2);
 			this.ctlSequenceControlsPanel.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.ctlSequenceControlsPanel.Location = new System.Drawing.Point(4, 563);
 			this.ctlSequenceControlsPanel.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
 			this.ctlSequenceControlsPanel.Name = "ctlSequenceControlsPanel";
-			this.ctlSequenceControlsPanel.Size = new System.Drawing.Size(621, 490);
+			this.ctlSequenceControlsPanel.Size = new System.Drawing.Size(1566, 490);
 			this.ctlSequenceControlsPanel.TabIndex = 3;
-			// 
-			// cStarlightLum
-			// 
-			this.cStarlightLum.Location = new System.Drawing.Point(4, 5);
-			this.cStarlightLum.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-			this.cStarlightLum.Maximum = 1000;
-			this.cStarlightLum.Name = "cStarlightLum";
-			this.cStarlightLum.Orientation = System.Windows.Forms.Orientation.Vertical;
-			this.cStarlightLum.Size = new System.Drawing.Size(80, 323);
-			this.cStarlightLum.TabIndex = 3;
-			this.cStarlightLum.TickFrequency = 100;
-			this.cStarlightLum.Value = 500;
-			// 
-			// cLuminance
-			// 
-			this.cLuminance.Location = new System.Drawing.Point(92, 5);
-			this.cLuminance.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-			this.cLuminance.Maximum = 1000;
-			this.cLuminance.Name = "cLuminance";
-			this.cLuminance.Orientation = System.Windows.Forms.Orientation.Vertical;
-			this.cLuminance.Size = new System.Drawing.Size(80, 323);
-			this.cLuminance.TabIndex = 2;
-			this.cLuminance.TickFrequency = 100;
-			this.cLuminance.Value = 500;
-			// 
-			// cSaturation
-			// 
-			this.cSaturation.Location = new System.Drawing.Point(180, 5);
-			this.cSaturation.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-			this.cSaturation.Maximum = 1000;
-			this.cSaturation.Name = "cSaturation";
-			this.cSaturation.Orientation = System.Windows.Forms.Orientation.Vertical;
-			this.cSaturation.Size = new System.Drawing.Size(80, 323);
-			this.cSaturation.TabIndex = 4;
-			this.cSaturation.TickFrequency = 100;
-			this.cSaturation.Value = 1000;
 			// 
 			// flowLayoutPanel3
 			// 
@@ -178,8 +132,6 @@
 			// 
 			// panel1
 			// 
-			this.panel1.Controls.Add(this.cColourPick);
-			this.panel1.Controls.Add(this.cColourSelected);
 			this.panel1.Controls.Add(this.cBtnLoad);
 			this.panel1.Controls.Add(this.cBtnSave);
 			this.panel1.Controls.Add(this.cPartyDebugShot);
@@ -187,26 +139,6 @@
 			this.panel1.Name = "panel1";
 			this.panel1.Size = new System.Drawing.Size(312, 334);
 			this.panel1.TabIndex = 11;
-			// 
-			// cColourPick
-			// 
-			this.cColourPick.Location = new System.Drawing.Point(4, 5);
-			this.cColourPick.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-			this.cColourPick.Name = "cColourPick";
-			this.cColourPick.Size = new System.Drawing.Size(202, 54);
-			this.cColourPick.TabIndex = 0;
-			this.cColourPick.Text = "Pick Colour";
-			this.cColourPick.UseVisualStyleBackColor = true;
-			this.cColourPick.Click += new System.EventHandler(this.XColourPickClick);
-			// 
-			// cColourSelected
-			// 
-			this.cColourSelected.BackColor = System.Drawing.Color.White;
-			this.cColourSelected.Location = new System.Drawing.Point(214, 0);
-			this.cColourSelected.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-			this.cColourSelected.Name = "cColourSelected";
-			this.cColourSelected.Size = new System.Drawing.Size(69, 75);
-			this.cColourSelected.TabIndex = 2;
 			// 
 			// cBtnLoad
 			// 
@@ -238,8 +170,10 @@
 			// 
 			// cFrameLatency
 			// 
+			this.cFrameLatency.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
 			this.cFrameLatency.Location = new System.Drawing.Point(578, 3);
 			this.cFrameLatency.Name = "cFrameLatency";
+			this.cFrameLatency.Padding = new System.Windows.Forms.Padding(1);
 			this.cFrameLatency.Size = new System.Drawing.Size(300, 50);
 			this.cFrameLatency.SizeMode = System.Windows.Forms.PictureBoxSizeMode.CenterImage;
 			this.cFrameLatency.TabIndex = 6;
@@ -330,11 +264,6 @@
 			this.Text = "Beta Crucis";
 			this.Load += new System.EventHandler(this.XMainLoad);
 			this.tableLayoutPanel1.ResumeLayout(false);
-			this.ctlSequenceControlsPanel.ResumeLayout(false);
-			this.ctlSequenceControlsPanel.PerformLayout();
-			((System.ComponentModel.ISupportInitialize)(this.cStarlightLum)).EndInit();
-			((System.ComponentModel.ISupportInitialize)(this.cLuminance)).EndInit();
-			((System.ComponentModel.ISupportInitialize)(this.cSaturation)).EndInit();
 			this.flowLayoutPanel3.ResumeLayout(false);
 			this.cFuncGroup.ResumeLayout(false);
 			this.panel1.ResumeLayout(false);
@@ -351,18 +280,13 @@
 
 		private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
 		private System.Windows.Forms.StatusStrip ctl_status;
-		private System.Windows.Forms.TrackBar cLuminance;
 		private System.Windows.Forms.FlowLayoutPanel ctlSequenceControlsPanel;
-		private System.Windows.Forms.TrackBar cStarlightLum;
-		private System.Windows.Forms.TrackBar cSaturation;
 		private System.Windows.Forms.CheckBox cAutoHunt;
 		private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel4;
 		private System.Windows.Forms.NumericUpDown cUpdatesPerSecond;
 		private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel5;
 		private System.Windows.Forms.Label labelHz;
 		private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel3;
-		private System.Windows.Forms.Button cColourPick;
-		private System.Windows.Forms.Label cColourSelected;
 		private System.Windows.Forms.GroupBox cFuncGroup;
 		private System.Windows.Forms.FlowLayoutPanel cFuncFlow;
 		private System.Windows.Forms.Button cPartyDebugShot;

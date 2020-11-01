@@ -5,8 +5,9 @@
 	using System.Net;
 	using System.Threading;
 	using System.Drawing;
+    using System.Collections.Generic;
 
-	class EngineHistorgramUpdatedEventArgs : EventArgs {
+    class EngineHistorgramUpdatedEventArgs : EventArgs {
 		public EngineHistorgramUpdatedEventArgs( Bitmap bmp ) {
 			Bitmap = bmp;
 		}
@@ -19,7 +20,9 @@
 
 		readonly Thread mWorkerThread;
 		bool mPingTriggerNextFrame = false;
-		volatile ISequence mCurrentProgram = new SequenceNull();
+		object mProgramLock = new object();
+		ISequence mCurrentProgram = new SequenceNull();
+		bool mTimeResetNextFrame = false;
 		Histogram mWorkerFrameHistogram = null;
 		bool isRunning = true;
 
@@ -57,14 +60,10 @@
 
 		public event EventHandler<EngineHistorgramUpdatedEventArgs> HistogramChanged;
 
-		public ISequence Sequence {
-			get {
-				return mCurrentProgram;
-			}
-			set {
-				// mCurrentProgram is volatile
-				mCurrentProgram = value;
-				Devices.ForEachSeenDevice( g => g.ClearButtonColour() );
+		public void LoadSequence( ISequence seq ) {
+			lock( mProgramLock ) {
+				mCurrentProgram = seq;
+				mTimeResetNextFrame = true;
 			}
 		}
 
@@ -86,6 +85,9 @@
 				return;
 			}
 			mCurrentProgram.ButtonStateChanged( g, e.ButtonStatus );
+			if( null != g.Binding ) {
+				g.Binding.OnButtonStateChanged( e.ButtonStatus );
+			}
 		}
 
 		void WorkerProcessPingPong( NetworkPingEventArgs e ) {
@@ -97,14 +99,13 @@
 				case HardwareType.GlimV3:
 				case HardwareType.GlimV4:
 					Debug.WriteLine( string.Format( "ping/pong from {0} ({1}) cpu {2}%, wifi strength {3} ({4}dbm)",
-						e.Hostname, e.HardwareType.ToString(), (int)( e.CPU * 100 ), e.RSSI.ToString(), e.dBm ) );
-					var g = Devices.FindOrCreate( e.Hostname );
+						e.HostName, e.HardwareType.ToString(), (int)( e.CPU * 100 ), e.RSSI.ToString(), e.dBm ) );
+					var g = Devices.FindOrCreate( e.HostName );
 					g.UpdateFromNetworkData( e );
 					// reply if appropriate
 					if( NetworkMessageType.Ping == e.MessageType ) {
 						g.SendPingReply();
 					}
-					g.AssertButtonColour();
 					break;
 				default:
 					Debug.WriteLine( "unknown type ping" );
@@ -129,6 +130,7 @@
 
 		void WorkerThreadMain() {
 			ISequence seq;
+			TimeSpan currentTime = TimeSpan.Zero;
 			Stopwatch progTime = new Stopwatch();
 			TimeSpan lastGraphPin = TimeSpan.Zero;
 			TimeSpan nextGraphPin = GraphPinInterval;
@@ -142,16 +144,30 @@
 				WorkerProcessTriggers();
 
 				// ### prepare next frame with preset time target
-				seq = mCurrentProgram;
-				seq.Execute();
-				netframe = new NetworkUdpFrame();
-				Devices.ForEachSeenDevice( g => netframe.AddRange( g.MarshalNetworkPackets() ) );
+				lock( mProgramLock ) {
+					seq = mCurrentProgram;
+					if( mTimeResetNextFrame ) {
+						currentTime = TimeSpan.Zero;
+						mTimeResetNextFrame = false;
 
-				if( TimeSpan.Zero == seq.CurrentTime ) {
+						// @todo: HACK HACKITY HACK HACK
+						var glims = new List<IGlimDevice>();
+						Devices.ForEachDevice( g => glims.Add( g ) );
+						seq.SetDiscoveredDevices( glims );
+
+						// make bindings
+						Devices.ResetAllBindings( seq.Devices );
+					}
+				}
+				seq.SetCurrentTime( currentTime );
+				seq.FrameExecute();
+				netframe = new NetworkUdpFrame();
+				Devices.ForEachDevice( g => netframe.AddRange( g.IPEndPoint, g.MarshalNetworkMessages() ) );
+
+				if( TimeSpan.Zero == currentTime ) {
 					// ### special condition for first frame
 					Network.Send( netframe );
 					progTime.Restart();
-					seq.CurrentTime += FrameTimeInterval;
 					lastGraphPin = TimeSpan.Zero;
 					nextGraphPin = GraphPinInterval;
 				}
@@ -160,7 +176,7 @@
 					if( progTime.Elapsed >= nextGraphPin ) {
 						// maintain graph pins...
 						//Debug.WriteLine( "spanTime.ElapsedMilliseconds [{0}] freeTime.ElapsedMilliseconds [{1}]", spanTime.ElapsedMilliseconds, freeTime.ElapsedMilliseconds );
-						//Debug.WriteLine( "seq.CurrentTime {0}, progTime.Elapsed {1}", seq.CurrentTime, progTime.Elapsed );
+						//Debug.WriteLine( "currentTime {0}, progTime.Elapsed {1}", currentTime, progTime.Elapsed );
 						double markPeriod = ( progTime.Elapsed - lastGraphPin ).TotalMilliseconds;
 						double ratioUsed = 1.0 - ( (double)freeTime.ElapsedMilliseconds / markPeriod );
 						lock( mWorkerFrameHistogram ) {
@@ -174,10 +190,10 @@
 
 					// ### spin until frame target
 					freeTime.Start();
-					while( seq.CurrentTime - progTime.Elapsed > LongSleepThreshold ) {
+					while( currentTime - progTime.Elapsed > LongSleepThreshold ) {
 						Thread.Sleep( 1 );
 					}
-					while( seq.CurrentTime > progTime.Elapsed ) {
+					while( currentTime > progTime.Elapsed ) {
 						Thread.Sleep( 0 );
 					}
 					freeTime.Stop();
@@ -187,11 +203,11 @@
 				}
 
 				// ### set next frame target
-				seq.CurrentTime += FrameTimeInterval;
-				if( seq.CurrentTime < progTime.Elapsed ) {
+				currentTime += FrameTimeInterval;
+				if( currentTime < progTime.Elapsed ) {
 					// @todo: can't keep up! need to log a warning?
 					// match speed to max...
-					seq.CurrentTime = progTime.Elapsed;
+					currentTime = progTime.Elapsed;
 				}
 			}
 		}

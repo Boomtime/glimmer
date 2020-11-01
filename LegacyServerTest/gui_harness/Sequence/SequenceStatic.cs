@@ -1,28 +1,30 @@
 ﻿namespace ShadowCreatures.Glimmer {
     using ShadowCreatures.Glimmer.Effects;
-    using System;
-    using System.Drawing;
+    using System.Collections.Generic;
 
-	class SequenceNull : SequenceDefault {
-		public override void Execute() {
+    class SequenceNull : SequenceMinimum {
+		public override void FrameExecute() {
+		}
+
+		public override IEnumerable<IDeviceBinding> Devices {
+			get { yield break; }
 		}
 	}
 
-	class SequenceStatic : SequenceDefault {
-		readonly IGlimPixelMap mMap;
-		readonly Func<Color> fClr;
-		readonly FxSolid mColour;
+	class SequenceStatic : SequenceDiagnostic {
+		readonly FxSolid mFxColour;
+		readonly ControlVariableColour mControl;
 
-		public SequenceStatic( GlimManager mgr, Func<Color> clr ) {
-			fClr = clr;
-			mMap = mgr.CreateCompletePixelMap();
-			mColour = new FxSolid();
+		public SequenceStatic() {
+			mFxColour = new FxSolid();
+			mControl = new ControlVariableColour { Value = mFxColour.Colour };
+			mControl.ValueChanged += ( s, e ) => mFxColour.Colour = mControl.Value;
+			Controls.Add( "Colour", mControl );
 		}
 
-		public override void Execute() {
+		public override void FrameExecute() {
 			var ctx = MakeCurrentContext();
-			mColour.Colour = fClr();
-			mMap.Write( mColour.Execute( ctx ) );
+			PixelMap.Write( mFxColour.Execute( ctx ) );
 		}
 	}
 }

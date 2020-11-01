@@ -46,10 +46,10 @@
 			this.tableLayoutPanel1.Location = new System.Drawing.Point(3, 3);
 			this.tableLayoutPanel1.Name = "tableLayoutPanel1";
 			this.tableLayoutPanel1.RowCount = 3;
-			this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 10F));
-			this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 80F));
-			this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 10F));
-			this.tableLayoutPanel1.Size = new System.Drawing.Size(187, 452);
+			this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 40F));
+			this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+			this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 40F));
+			this.tableLayoutPanel1.Size = new System.Drawing.Size(165, 452);
 			this.tableLayoutPanel1.TabIndex = 0;
 			// 
 			// ctlName
@@ -59,7 +59,7 @@
 			this.ctlName.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.ctlName.Location = new System.Drawing.Point(3, 0);
 			this.ctlName.Name = "ctlName";
-			this.ctlName.Size = new System.Drawing.Size(181, 45);
+			this.ctlName.Size = new System.Drawing.Size(159, 40);
 			this.ctlName.TabIndex = 0;
 			this.ctlName.Text = "%name%";
 			this.ctlName.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
@@ -69,7 +69,7 @@
 			this.ctlEdit.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.ctlEdit.Location = new System.Drawing.Point(43, 409);
+			this.ctlEdit.Location = new System.Drawing.Point(32, 415);
 			this.ctlEdit.Name = "ctlEdit";
 			this.ctlEdit.ReadOnly = true;
 			this.ctlEdit.Size = new System.Drawing.Size(100, 29);
@@ -78,7 +78,7 @@
 			// ctlTrackBar
 			// 
 			this.ctlTrackBar.Cursor = System.Windows.Forms.Cursors.Hand;
-			this.ctlTrackBar.Location = new System.Drawing.Point(43, 48);
+			this.ctlTrackBar.Location = new System.Drawing.Point(32, 43);
 			this.ctlTrackBar.Maximum = 100;
 			this.ctlTrackBar.Name = "ctlTrackBar";
 			this.ctlTrackBar.Orientation = System.Windows.Forms.Orientation.Vertical;
@@ -93,7 +93,7 @@
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.Controls.Add(this.tableLayoutPanel1);
 			this.Name = "LabelledTrackBar";
-			this.Size = new System.Drawing.Size(193, 458);
+			this.Size = new System.Drawing.Size(171, 458);
 			this.tableLayoutPanel1.ResumeLayout(false);
 			this.tableLayoutPanel1.PerformLayout();
 			((System.ComponentModel.ISupportInitialize)(this.ctlTrackBar)).EndInit();
@@ -105,7 +105,7 @@
 
 		private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
 		private System.Windows.Forms.Label ctlName;
-		private System.Windows.Forms.TrackBar ctlTrackBar;
-		private System.Windows.Forms.TextBox ctlEdit;
+		protected System.Windows.Forms.TrackBar ctlTrackBar;
+		protected System.Windows.Forms.TextBox ctlEdit;
 	}
 }

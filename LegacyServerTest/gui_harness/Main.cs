@@ -6,6 +6,8 @@
 	using System.Threading;
     using ShadowCreatures.Glimmer.Json;
 	using ShadowCreatures.Glimmer.Controls;
+    using System.Collections.Generic;
+    using System.Drawing;
 
     public partial class Main : Form {
 		const int AutoHuntInterval = 1000;
@@ -19,21 +21,15 @@
 			PartyNoGame,
 			Christmas,
 			WindowTest,
+			Halloween2020,
 			Custom,
 		}
 
 		readonly Engine mEngine;
 		readonly System.Windows.Forms.Timer mAutoHuntTimer = new System.Windows.Forms.Timer();
 		OutputFunc mFunc = OutputFunc.None;
+		Dictionary<OutputFunc, ISequence> mSequenceList = new Dictionary<OutputFunc, ISequence>();
 		volatile ISequence mCurrentProgram = new SequenceNull();
-
-
-		/******************************************************************/
-
-		// party stuff
-		SequenceParty mParty;
-
-		ISequence mCustomProgram;
 
 		/*******************************************************************************/
 
@@ -51,20 +47,10 @@
 			cAutoHunt.CheckedChanged += XAutoHuntCheckedChanged;
 			XAutoHuntCheckedChanged( cAutoHunt, EventArgs.Empty );
 
-			AddFunctionRadio( "none", OutputFunc.None );
-			AddFunctionRadio( "static", OutputFunc.Static );
-			AddFunctionRadio( "rainbow cycle", OutputFunc.Rainbow );
-			AddFunctionRadio( "channel test", OutputFunc.ChannelTest );
-			AddFunctionRadio( "party game", OutputFunc.PartyGame );
-			AddFunctionRadio( "party no game", OutputFunc.PartyNoGame );
-			AddFunctionRadio( "christmas", OutputFunc.Christmas );
-			AddFunctionRadio( "window test", OutputFunc.WindowTest );
-			AddFunctionRadio( "custom...", OutputFunc.Custom );
-
 			FormClosing += XMainFormClosing;
 		}
 
-		void AddFunctionRadio( string text, OutputFunc func ) {
+		void AddFunctionRadio( string text, OutputFunc func, ISequence sequence = null ) {
 			var r = new RadioButton {
 				Text = text,
 				Tag = func,
@@ -73,11 +59,8 @@
 			};
 			r.CheckedChanged += XFuncCheckChanged;
 			cFuncFlow.Controls.Add( r );
+			mSequenceList.Add( func, sequence );
 		}
-
-		double UILuminanceMultiplier => ( (double)cLuminance.Value + 10 ) / (double)cLuminance.Maximum;
-
-		double UISaturationMultiplier => ( (double)cSaturation.Value + 10 ) / (double)cSaturation.Maximum;
 
 		void XAutoHuntCheckedChanged( object sender, EventArgs e ) {
 			if( ( sender as CheckBox ).Checked ) {
@@ -101,9 +84,17 @@
 			mEngine.Devices.FindOrCreate( "GlimSwarm-105" );
 			mEngine.Devices.FindOrCreate( "GlimSwarm-106" );
 
-			mParty = new SequenceParty( mEngine.Devices );
+			AddFunctionRadio( "none", OutputFunc.None, new SequenceNull() );
+			AddFunctionRadio( "static", OutputFunc.Static, new SequenceStatic() );
+			AddFunctionRadio( "rainbow cycle", OutputFunc.Rainbow, new SequenceRainbow() );
+			AddFunctionRadio( "channel test", OutputFunc.ChannelTest, new SequenceChannelTest() );
+			//AddFunctionRadio( "party game", OutputFunc.PartyGame, new SequenceParty { EnableGame = true } );
+			//AddFunctionRadio( "party no game", OutputFunc.PartyNoGame, new SequenceParty { EnableGame = false } );
+			AddFunctionRadio( "christmas", OutputFunc.Christmas, new SequenceChristmas() );
+			AddFunctionRadio( "window test", OutputFunc.WindowTest, new SequenceTestWindow() );
+			AddFunctionRadio( "halloween 2020", OutputFunc.Halloween2020, new SequenceHalloween2020() );
+			AddFunctionRadio( "custom...", OutputFunc.Custom, new SequenceNull() );
 
-			mCustomProgram = new SequenceNull();
 			cBtnLoad.Click += XBtnLoad_Click;
 			cBtnSave.Click += XBtnSave_Click;
 
@@ -122,7 +113,10 @@
 			if( DialogResult.OK == dlg.ShowDialog() ) {
 				try {
 					using( var file = dlg.OpenFile() ) {
-						mCustomProgram = SequenceJson.Load( mEngine.Devices, file );
+						mSequenceList[OutputFunc.Custom] = SequenceJson.Load( file );
+						if( OutputFunc.Custom == mFunc ) {
+							StartCurrentSequence();
+						}
 					}
 				}
 				catch( Exception ex ) {
@@ -148,14 +142,6 @@
 			} );
 		}
 
-		void XColourPickClick( object sender, EventArgs e ) {
-			using( var dlg = new ColorDialog { Color = cColourSelected.BackColor } ) {
-				if( DialogResult.OK == dlg.ShowDialog( this ) ) {
-					cColourSelected.BackColor = dlg.Color;
-				}
-			}
-		}
-
 		void UISafeCall( Action func ) {
 			if( InvokeRequired ) {
 				try {
@@ -171,75 +157,24 @@
 			}
 		}
 
-		static Control MakeUIControlForVariable( string name, ControlVariable v ) {
-			switch( v.Type ) {
-				case ControlType.Colour:
-					break;
-				case ControlType.Double:
-				case ControlType.Integer:
-				case ControlType.Ratio:
-					var vn = v as ControlVariableNumber;
-					var ltb = new LabelledTrackBar {
-						Text = name,
-						Maximum = vn.Max,
-						Minimum = vn.Min,
-						Value = vn.Value
-					};
-					ltb.ValueChanged += ( s, e ) => { v.Value = ( s as LabelledTrackBar ).Value; };
-					v.ValueChanged += ( s, e ) => { ltb.Value = e.Value; };
-					return ltb;
-			}
-			throw new NotImplementedException( string.Format( "ControlVariable {0} has no UI", v.Type.ToString() ) );
-		}
-
-		void RebuildSequenceControlsPanel() {
+		void StartCurrentSequence() {
+			mCurrentProgram = mSequenceList[mFunc];
+			mEngine.LoadSequence( mCurrentProgram );
+			// rebuild control panel
 			ctlSequenceControlsPanel.SuspendLayout();
 			ctlSequenceControlsPanel.Controls.Clear();
 			foreach( var ctlv in mCurrentProgram.Controls ) {
-				ctlSequenceControlsPanel.Controls.Add( MakeUIControlForVariable( ctlv.Key, ctlv.Value ) );
+				ctlSequenceControlsPanel.Controls.Add( ctlv.Value.MakeUIControl( ctlv.Key ) );
 			}
 			ctlSequenceControlsPanel.ResumeLayout();
 		}
 
 		void XFuncCheckChanged( object sender, EventArgs e ) {
 			var rb = sender as RadioButton;
-			if( !rb.Checked ) {
-				return;
+			if( rb.Checked ) {
+				mFunc = (OutputFunc)rb.Tag;
+				StartCurrentSequence();
 			}
-			mFunc = (OutputFunc)rb.Tag;
-			switch( mFunc ) {
-				case OutputFunc.None:
-					mCurrentProgram = new SequenceNull();
-					break;
-				case OutputFunc.Static:
-					mCurrentProgram = new SequenceStatic( mEngine.Devices, () => cColourSelected.BackColor );
-					break;
-				case OutputFunc.ChannelTest:
-					mCurrentProgram = new SequenceChannelTest( mEngine.Devices, clr => cColourSelected.BackColor = clr );
-					break;
-				case OutputFunc.Christmas:
-					mCurrentProgram = new SequenceChristmas( mEngine.Devices );
-					break;
-				case OutputFunc.Rainbow:
-					mCurrentProgram = new SequenceRainbow( mEngine.Devices, 94 / 3, 8 );
-					break;
-				case OutputFunc.WindowTest:
-					mCurrentProgram = new SequenceTestWindow( mEngine.Devices.Find( "GlimSwarm-103" ) );
-					break;
-				case OutputFunc.PartyGame:
-				case OutputFunc.PartyNoGame:
-					mParty.EnableGame = ( OutputFunc.PartyGame == mFunc );
-					mCurrentProgram = mParty;
-					break;
-				case OutputFunc.Custom:
-					mCurrentProgram = mCustomProgram;
-					break;
-			}
-			RebuildSequenceControlsPanel();
-			//mCurrentProgram.Luminance = UILuminanceMultiplier;
-			//mCurrentProgram.Saturation = UISaturationMultiplier;
-			// program changed..
-			mEngine.Sequence = mCurrentProgram;
 		}
 
 		class GlimDeviceNull : IGlimDevice {
@@ -251,7 +186,7 @@
 				dBm = 0;
 				RSSI = WifiRSSI.Excellent;
 			}
-			public string Hostname => String.Empty;
+			public string HostName => String.Empty;
 			public IPEndPoint IPEndPoint { get; }
 			public HardwareType HardwareType { get; }
 			public TimeSpan Uptime { get; }

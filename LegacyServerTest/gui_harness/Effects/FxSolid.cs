@@ -5,7 +5,7 @@
 	class FxSolid : IFx {
 		/// <summary>set the colour to repeat</summary>
 		[Configurable]
-		public Color Colour { get; set; }
+		public Color Colour { get; set; } = Color.White;
 
 		public IEnumerable<Color> Execute( IFxContext ctx ) {
 			while( true ) {

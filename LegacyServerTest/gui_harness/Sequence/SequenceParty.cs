@@ -4,19 +4,19 @@
     using System.Collections.Generic;
     using System.Drawing;
 
-    class SequenceParty : SequenceDefault {
+    class SequenceParty : SequenceMinimum {
 		const double ButtonTimeEpsilonSeconds = 0.2;
 
 		/// <summary>internal descriptor of a device</summary>
-		class GlimDescriptor {
+		class GlimDescriptor : SequenceDeviceBasic {
 			readonly IGlimPixelMap mPixelMap;
 			FxComet mFxComet;
 
-			public GlimDescriptor( GlimDevice device, Color partyColor ) {
-				Device = device;
+			public GlimDescriptor( string displayName, string hostName, int pixelCount, Color partyColor )
+				: base( displayName, hostName, pixelCount ) {
 				PartyColor = partyColor;
 				mFxComet = null;
-				mPixelMap = new GlimPixelMap.Factory { { device, 0, 100 } }.Compile();
+				mPixelMap = new GlimPixelMap.Factory { { this, 0, 100 } }.Compile();
 			}
 
 			public void WriteExecute( IFxContext ctx ) {
@@ -33,7 +33,6 @@
 				mFxComet = new FxComet { BaseColor = PartyColor, PixelCount = pixelCount };
 			}
 
-			public readonly GlimDevice Device;
 			public readonly Color PartyColor;
 			public TimeSpan? ButtonDownTimestamp { get; set; }
 		}
@@ -47,6 +46,7 @@
 
 		readonly GlimDescriptor mGlimRedGun;
 		readonly GlimDescriptor mGlimBlueGun;
+		readonly SequenceDeviceBasic mGlimStars;
 		readonly IGlimPixelMap mPixelMapStars;
 		readonly IGlimPixelMap mPixelMapBarrel;
 		readonly IGlimPixelMap mPixelMapPerimeter;
@@ -58,14 +58,14 @@
 		GameState mGameState = GameState.Null;
 		TimeSpan mGameCoolDownStart;
 
-		public SequenceParty( GlimManager mgr ) {
-			var deviceRed = mgr.Find( "GlimSwarm-103" );
-			var deviceBlue = mgr.Find( "GlimSwarm-104" );
-			var deviceStars = mgr.Find( "GlimSwarm-102" );
+		public SequenceParty() {
+			Luminance = AddLuminanceControl( x => { } );
+			Saturation = AddSaturationControl( x => { } );
 
 			// comets!
-			mGlimRedGun = new GlimDescriptor( deviceRed, Color.Red );
-			mGlimBlueGun = new GlimDescriptor( deviceBlue, Color.Blue );
+			mGlimRedGun = new GlimDescriptor( "Red", "GlimSwarm-103", 150, Color.Red );
+			mGlimBlueGun = new GlimDescriptor( "Blue", "GlimSwarm-104", 100, Color.Blue );
+			mGlimStars = new SequenceDeviceBasic( "Stars", "GlimSwarm-102", 150 );
 			mFxBarrel = new FxComet { BaseColor = Color.FromArgb( 0xff, 0, 0xff ), PixelCount = 50 };
 			mFxCannonTwinkle = new FxStarlightTwinkle {
 				BaseColor = Color.FromArgb( 0xff, 0, 0xff ),
@@ -74,9 +74,9 @@
 				LuminanceMaxima = 0.8
 			};
 
-			mPixelMapStars = new GlimPixelMap.Factory { deviceStars }.Compile();
-			mPixelMapBarrel = new GlimPixelMap.Factory { { deviceRed, 100, 50 } }.Compile();
-			mPixelMapPerimeter = new GlimPixelMap.Factory { { deviceRed, 0, 100 }, { deviceBlue, 100, -100 } }.Compile();
+			mPixelMapStars = new GlimPixelMap.Factory { mGlimStars }.Compile();
+			mPixelMapBarrel = new GlimPixelMap.Factory { { mGlimRedGun, 100, 50 } }.Compile();
+			mPixelMapPerimeter = new GlimPixelMap.Factory { { mGlimRedGun, 0, 100 }, { mGlimBlueGun, 100, -100 } }.Compile();
 
 			mFxPerimeterRainbow = new FxScale( new FxRainbow() );
 			mFxStarlight = new FxScale( new FxStarlightTwinkle { BaseColor = Color.Yellow } ) { Saturation = 0.3 };
@@ -88,7 +88,12 @@
 			}
 		}
 
-		public override void Execute() {
+		public ControlVariableRatio Luminance { get; }
+
+		public ControlVariableRatio Saturation { get; }
+
+
+		public override void FrameExecute() {
 			var ctx = MakeCurrentContext();
 			mFxPerimeterRainbow.Luminance = PerimeterLuminanceMultiplier;
 			mFxPerimeterRainbow.Saturation = Saturation.Value;
@@ -138,16 +143,24 @@
 			}
 		}
 
+		public override IEnumerable<IDeviceBinding> Devices {
+			get {
+				yield return mGlimRedGun;
+				yield return mGlimBlueGun;
+				yield return mGlimStars;
+			}
+		}
+
 		public override void ButtonStateChanged( IGlimDevice src, ButtonStatus btn ) {
 			GlimDescriptor d;
-			if( src.Hostname == mGlimRedGun.Device.Hostname ) {
+			if( src.HostName == mGlimRedGun.HostName ) {
 				d = mGlimRedGun;
 			}
-			else if( src.Hostname == mGlimBlueGun.Device.Hostname ) {
+			else if( src.HostName == mGlimBlueGun.HostName ) {
 				d = mGlimBlueGun;
 			}
 			else {
-				if( null == src.Hostname ) {
+				if( null == src.HostName ) {
 					DebugClick();
 				}
 				// only responding to known descriptors
@@ -204,19 +217,17 @@
 			ColorReal min;
 			ColorReal max;
 			ColorReal onHeld;
-			if( null != d.Device.IPEndPoint ) {
-				if( ( EnableGame && !d.CometIsRunning && GameState.Null == mGameState ) ) {
-					min = d.PartyColor;
-					min.Luminance = 0.1;
-					max = d.PartyColor;
-					max.Luminance = 0.3;
-					onHeld = d.PartyColor;
-					onHeld.Luminance = 0.55;
-					d.Device.SetButtonColour( min, max, 1024, onHeld );
-				}
-				else {
-					d.Device.ClearButtonColour();
-				}
+			if( ( EnableGame && !d.CometIsRunning && GameState.Null == mGameState ) ) {
+				min = d.PartyColor;
+				min.Luminance = 0.1;
+				max = d.PartyColor;
+				max.Luminance = 0.3;
+				onHeld = d.PartyColor;
+				onHeld.Luminance = 0.55;
+				d.ButtonColour = new ButtonColour( min, max, 1024, onHeld );
+			}
+			else {
+				d.ButtonColour = ButtonColour.Off;
 			}
 		}
 

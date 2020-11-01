@@ -21,13 +21,13 @@
 		{ "Name": "CometLeft", "Devices": [
 			{ "Device": "Window", "PixelStart": 55, "PixelCount": -48 }
 		], "Effects": [
-			//{ "Class": "FxComet" }
+			{ "Class": "FxComet" }
 		] },
 		{ "Name": "CometRight", "Devices": [
 			{ "Device": "Window", "PixelStart": 54, "PixelCount": 40 },
 			{ "Device": "Window", "PixelStart": 0, "PixelCount": 8 }
 		], "Effects": [
-			//{ "Class": "FxComet" }
+			{ "Class": "FxComet" }
 		] }
 	],
 	"Events":[

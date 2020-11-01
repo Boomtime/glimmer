@@ -4,23 +4,17 @@
     using System.Drawing;
     using System.Net;
 
-	class GlimDevice : IGlimDevice, IGlimPacket {
-		NetworkMessage mBtnClr;
-		bool mBtnClrChanged;
+	class GlimDevice : IGlimDevice {
+		ButtonColour mBtnClr;
 		NetworkMessage mPingReply;
-		Color[] mPixelData;
-		bool mPixelDataChanged;
 
 		public GlimDevice( string hostname ) {
-			Hostname = hostname;
-			mBtnClr = ButtonColourDefault;
-			mBtnClrChanged = false;
+			HostName = hostname;
+			mBtnClr = ButtonColour.Off;
 			mPingReply = null;
-			mPixelDataChanged = false;
-			PixelCount = 200;
 		}
 
-		public string Hostname { get; private set; }
+		public string HostName { get; private set; }
 		public IPEndPoint IPEndPoint { get; private set; }
 		public HardwareType HardwareType { get; private set; }
 		public TimeSpan Uptime { get; private set; }
@@ -30,17 +24,14 @@
 
 		public int BootCount { get; private set; }
 
-		public int PixelCount {
-			get { return mPixelData.Length; }
-			set { mPixelData = new Color[value]; }
-		}
+		public IDeviceBinding Binding { get; set; }
 
-		public event EventHandler Changed;
+		//public event EventHandler Changed;
 
 		public void UpdateFromNetworkData( IGlimDevice args ) {
 			if( 0 == BootCount || args.Uptime.TotalSeconds < Uptime.TotalSeconds ) {
 				BootCount++;
-				AssertButtonColour();
+				mBtnClr = ButtonColour.Off; // reload from binding
 			}
 			IPEndPoint = args.IPEndPoint;
 			HardwareType = args.HardwareType;
@@ -48,28 +39,7 @@
 			CPU = args.CPU;
 			RSSI = args.RSSI;
 			dBm = args.dBm;
-			Changed?.Invoke( this, EventArgs.Empty );
-		}
-
-		static NetworkMessageButtonColour ButtonColourDefault {
-			get { return new NetworkMessageButtonColour( Color.Black, Color.Black, 0, Color.Black ); }
-		}
-
-		/// <summary>next packet transmission contains a glimmer button packet</summary>
-		public void SetButtonColour( Color min, Color max, short period, Color onHeld ) {
-			mBtnClr = new NetworkMessageButtonColour( min, max, period, onHeld );
-			mBtnClrChanged = true;
-		}
-
-		/// <summary>next packet transmission contains a glimmer button packet even if it hasn't changed</summary>
-		public void AssertButtonColour() {
-			mBtnClrChanged = true;
-		}
-
-		/// <summary>switch off the glimmer button</summary>
-		public void ClearButtonColour() {
-			mBtnClr = ButtonColourDefault;
-			mBtnClrChanged = true;
+			//Changed?.Invoke( this, EventArgs.Empty );
 		}
 
 		/// <summary>next packet transmission contains a ping reply</summary>
@@ -77,51 +47,27 @@
 			mPingReply = new NetworkMessagePingReply();
 		}
 
-		/// <summary>next packet transmission contains colour vector data even if it hasn't changed</summary>
-		public void AssertPixelData() {
-			mPixelDataChanged = true;
-		}
-
-		public IEnumerable<NetworkUdpPacket> MarshalNetworkPackets() {
+		public IEnumerable<NetworkMessage> MarshalNetworkMessages() {
 			if( null != mPingReply ) {
 				var pr = mPingReply;
 				mPingReply = null;
-				yield return new NetworkUdpPacket( IPEndPoint, pr );
+				yield return pr;
 			}
-			if( mPixelDataChanged ) {
-				mPixelDataChanged = false;
-				yield return new NetworkUdpPacket( IPEndPoint, new NetworkMessageColourVector( mPixelData ) );
+			if( null == Binding ) {
+				// clear down from last binding..
+				if( mBtnClr != ButtonColour.Off ) {
+					mBtnClr = ButtonColour.Off;
+					yield return new NetworkMessageButtonColour( mBtnClr );
+				}
 			}
-			if( mBtnClrChanged ) {
-				mBtnClrChanged = false;
-				yield return new NetworkUdpPacket( IPEndPoint, mBtnClr );
+			else {
+				// using the binding map
+				if( Binding.ButtonColour != mBtnClr ) {
+					mBtnClr = Binding.ButtonColour;
+					yield return new NetworkMessageButtonColour( mBtnClr );
+				}
+				yield return new NetworkMessageColourVector( Binding.FrameBuffer );
 			}
-		}
-
-		/// <summary>uses src-alpha to blend dst with 1 minus src-alpha</summary>
-		/// <param name="dst">destination (alpha is ignored)</param>
-		/// <param name="src">source colour with alpha</param>
-		/// <returns>blend</returns>
-		static Color Blend( Color dst, Color src ) {
-			if( Byte.MaxValue == src.A ) {
-				return src;
-			}
-			if( 0 == src.A ) {
-				return dst;
-			}
-			double sa = (double)src.A / Byte.MaxValue;
-			double omsa = 1.0 - sa;
-
-			return Color.FromArgb( (int)( dst.R * omsa + src.R * sa ),
-				(int)( dst.G * omsa + src.G * sa ), (int)( dst.B * omsa + src.B * sa ) );
-		}
-
-		/// <summary>set pixel preserving blend using src-alpha</summary>
-		/// <param name="pixel"></param>
-		/// <param name="src"></param>
-		public void SetPixel( int pixel, Color src ) {
-			mPixelData[pixel] = Blend( mPixelData[pixel], src );
-			mPixelDataChanged = true;
 		}
 	}
 
@@ -153,6 +99,19 @@
 			return null;
 		}
 
+		public void ResetAllBindings( IEnumerable<IDeviceBinding> devices ) {
+			lock( mList ) {
+				foreach( var d in mList.Values ) {
+					d.Binding = null;
+				}
+				foreach( var b in devices ) {
+					if( mList.TryGetValue( b.HostName, out GlimDevice d ) ) {
+						d.Binding = b;
+					}
+				}
+			}
+		}
+
 		public event EventHandler<DeviceAddedEventArgs> DeviceAdded;
 
 		public GlimDevice FindOrCreate( string hostname ) {
@@ -160,30 +119,21 @@
 			if( null == g ) {
 				g = new GlimDevice( hostname );
 				lock( mList ) {
-					mList.Add( g.Hostname, g );
+					mList.Add( g.HostName, g );
 				}
 				DeviceAdded?.Invoke( this, new DeviceAddedEventArgs( g ) );
 			}
 			return g;
 		}
 
-		public void ForEachSeenDevice( Action<GlimDevice> e ) {
+		public void ForEachDevice( Action<GlimDevice> f, bool onlyDevicesThatHavePinged = true ) {
 			lock( mList ) {
 				foreach( var g in mList.Values ) {
-					if( null != g.IPEndPoint ) {
-						e( g );
+					if( !onlyDevicesThatHavePinged || null != g.IPEndPoint ) {
+						f( g );
 					}
 				}
 			}
-		}
-
-		/// <summary>create a contiguous map of all pixels from AllSeenDevices</summary>
-		/// <returns>the complete map</returns>
-		public IGlimPixelMap CreateCompletePixelMap() {
-			// create a contiguous pixel map
-			var f = new GlimPixelMap.Factory();
-			ForEachSeenDevice( g => f.Add( g ) );
-			return f.Compile();
 		}
 	}
 }

@@ -4,9 +4,7 @@
 	using System.Net.Sockets;
 	using System.Collections.Generic;
 	using System.Text;
-	using System.Diagnostics;
     using System.Drawing;
-	using System.Collections;
 
 	/// <summary>order of colour triples</summary>
 	public enum NetworkColourOrder {
@@ -101,12 +99,13 @@
 	}
 
 	class NetworkMessageButtonColour : NetworkMessage {
-		public NetworkMessageButtonColour( Color min, Color max, short period, Color onHeld, NetworkColourOrder order = NetworkColourOrder.RGB ) : base( order ) {
+		public NetworkMessageButtonColour( ButtonColour btn, NetworkColourOrder order = NetworkColourOrder.RGB )
+			: base( order ) {
 			AddByte( (byte)NetworkMessageType.ButtonColour );
-			AddColour( min );
-			AddColour( max );
-			AddShort( period );
-			AddColour( onHeld );
+			AddColour( btn.Min );
+			AddColour( btn.Max );
+			AddShort( btn.Period );
+			AddColour( btn.OnHeld );
 		}
 	}
 
@@ -152,7 +151,7 @@
 	/// <summary>gives paramters to ping/pong events</summary>
 	class NetworkPingEventArgs : NetworkEventArgs, IGlimDevice {
 		public NetworkPingEventArgs( NetworkMessageType type, IPEndPoint source, HardwareType hw, string hostname, TimeSpan uptime, float cpu, int dbm, uint net_recv ) : base( type, source ) {
-			Hostname = hostname;
+			HostName = hostname;
 			HardwareType = hw;
 			Uptime = uptime;
 			CPU = cpu;
@@ -160,7 +159,7 @@
 			NetRecv = net_recv;
 		}
 		public HardwareType HardwareType { get; }
-		public string Hostname { get; }
+		public string HostName { get; }
 		public IPEndPoint IPEndPoint => SourceAddress;
 		public TimeSpan Uptime { get; }
 		public float CPU { get; }
@@ -204,8 +203,10 @@
 	}
 
 	class NetworkUdpFrame : List<NetworkUdpPacket> {
-		public void Add( IPEndPoint dst, NetworkMessage msg ) {
-			Add( new NetworkUdpPacket( dst, msg ) );
+		public void AddRange( IPEndPoint dst, IEnumerable<NetworkMessage> msgs ) {
+			foreach( var msg in msgs ) {
+				Add( new NetworkUdpPacket( dst, msg ) );
+			}
 		}
 	}
 

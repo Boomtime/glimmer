@@ -59,15 +59,5 @@ namespace ShadowCreatures.Glimmer.Properties {
                 resourceCulture = value;
             }
         }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap Wifi_Full {
-            get {
-                object obj = ResourceManager.GetObject("Wifi_Full", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
     }
 }

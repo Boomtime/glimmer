@@ -1,23 +1,26 @@
 ﻿namespace ShadowCreatures.Glimmer {
 	using ShadowCreatures.Glimmer.Effects;
-	using System;
     using System.Drawing;
 
-    class SequenceChannelTest : SequenceDefault {
-		readonly IGlimPixelMap mMap;
-		readonly Action<Color> fClr;
+    class SequenceChannelTest : SequenceDiagnostic {
 		readonly FxSolid mColour;
+		readonly ControlVariableColour mControl;
 
-		public SequenceChannelTest( GlimManager mgr, Action<Color> clr ) {
-			fClr = clr;
-			mMap = mgr.CreateCompletePixelMap();
+		public SequenceChannelTest() {
 			Dwell = 1000;
 			mColour = new FxSolid();
+			mControl = new ControlVariableColour { Value = mColour.Colour };
+			Controls.Add( "Colour", mControl );
+		}
+
+		public Color Colour {
+			get => mControl.Value;
+			set => mControl.Value = value;
 		}
 
 		public int Dwell { get; set; }
 
-		public override void Execute() {
+		public override void FrameExecute() {
 			var ctx = MakeCurrentContext();
 			double pos = 1000 * ( CurrentTime.TotalSeconds % ( 3 * Dwell / 1000 ) );
 			if( pos < Dwell ) {
@@ -29,8 +32,8 @@
 			else {
 				mColour.Colour = Color.Blue;
 			}
-			fClr( mColour.Colour );
-			mMap.Write( mColour.Execute( ctx ) );
+			Colour = mColour.Colour;
+			PixelMap.Write( mColour.Execute( ctx ) );
 		}
 	}
 }
