@@ -1,7 +1,9 @@
 #include "rgb.h"
 namespace rgb {
 
-#define MAX_FADER_TIME_MS	60000
+#define MAX_FADER_TIME_MS        60000
+#define LOOP_THINK_MS            40
+#define SYSTEM_LAMPS_TIMEOUT_MS  50
 
 using namespace shadowcreatures::arduino;
 using glim::colour_t;
@@ -20,10 +22,10 @@ static bool needs_update = true;
 static uint last_update_time = 0;
 
 struct lamp_impl_s : lamp_api_s {
-	rgb_t value;// current
-	rgb_t max;  // glimmer max (and fade start)
-	rgb_t min;	// glimmer min
-	uint period;// glimmer period (and fade duration)
+	rgb_t value;  // current
+	rgb_t max;    // glimmer max (and fade start)
+	rgb_t min;	  // glimmer min
+	uint period;  // glimmer period (and fade duration)
 	uint fade_time_target;
 
 	virtual void set_colour( const glim::rgb_t& );
@@ -118,7 +120,7 @@ void lamp_impl_s::update( void ) {
 
 static inline void WS2811_writeByte( uint8_t b ) {
 	static const uint8_t q[4] = { 0b00110111, 0b00000111, 0b00110100, 0b00000100 };
-	uint8_t buf[4]; //  		     11101110    10001110    11101000    10001000
+	uint8_t buf[4]; //               11101110    10001110    11101000    10001000
 					//               00010001    01110001    00010111    01110111
 	buf[0] = q[(b >> 6) & 3];
 	buf[1] = q[(b >> 4) & 3];
@@ -142,7 +144,8 @@ static bool can_update_system( void ) {
 KERNEL_LOOP_DEFINE( rgb ) {
 	lamp::local::system.update();
 	lamp::local::button.update();
-	if( lamp::needs_update && lamp::last_update_time <= millis() + 40 ) {
+	if( lamp::needs_update && lamp::last_update_time <= millis() + SYSTEM_LAMPS_TIMEOUT_MS ) {
+		DEBUG_PRINT( "flushing system colours due to packet timeout" );
 		// flush system lamps
 		WS2811_writeSystemColours();
 		Serial1.flush();
@@ -150,7 +153,7 @@ KERNEL_LOOP_DEFINE( rgb ) {
 		lamp::last_update_time = millis();
 		lamp::needs_update = false;
 	}
-	return 40;
+	return LOOP_THINK_MS;
 }
 
 
@@ -173,15 +176,22 @@ void initialize( void ) {
 	pinMode( PIN::RGB_ENABLE, OUTPUT );
 	digitalWrite( PIN::RGB_ENABLE, LOW );
 
+	DEBUG_SPRINT( "serial buffer size [%i]", Serial.availableForWrite() );
+
 	KERNEL_LOOP_ATTACH( rgb, 50 );
 }
 
 // main line of RGB(W) lamps, reads all available() bytes from the Stream
 void write( Stream& src ) {
+	if( millis() - lamp::last_update_time < 5 ) {
+		DEBUG_SPRINT( "low packet diff [%i]", millis() - lamp::last_update_time );
+		delay( 1 );
+	}
 	WS2811_writeSystemColours();
 	for( uint n = src.available() ; n > 0 ; n = src.available() ) {
 		WS2811_writeByte( src.read() );
 	}
+	Serial1.flush();
 	lamp::last_update_time = millis();
 	lamp::needs_update = false;
 }

@@ -1,0 +1,48 @@
+{
+	"Devices": [
+		{ "Name": "Dining", "HostName": "GlimSwarm-103", "PixelCount": 188 },
+		{ "Name": "Lounge", "HostName": "GlimSwarm-104", "PixelCount": 129 },
+		{ "Name": "Roof", "HostName": "GlimSwarm-106", "PixelCount": 150 }
+	],
+	"Controls": [
+		{ "Name": "Luminance", "Type": "Ratio", "Default": 1.0 },
+		{ "Name": "Saturation", "Type": "Ratio", "Default": 1.0 },
+		{ "Name": "WindowLum", "Type": "Ratio", "Default": 0.2 },
+		{ "Name": "Period", "Type": "Integer", "Default": 4, "Min": 0, "Max": 15 }
+	],
+	"Sequences": [
+		{ "Name": "CandyWindows", "Devices": [ "Roof" ], "Effects": [
+			{ "Class": "FxScale", "Parameters": {
+				"Luminance": { "Control": "Luminance" },
+				"Saturation": { "Control": "Saturation" }
+			}, "Sources": [
+				{ "Class": "FxScale", "Parameters": {
+					"Luminance": { "Control": "WindowLum" }
+				}, "Sources": [
+					{ "Class": "FxCandyCane", "Parameters": {
+						"PeriodSeconds": { "Control": "Period" }
+					} }
+				] }
+			] }
+		] },
+		{ "Name": "CandyRoof", "Devices": [ "Lounge", "Dining" ], "Effects": [
+			{ "Class": "FxScale", "Parameters": {
+				"Luminance": { "Control": "Luminance" },
+				"Saturation": { "Control": "Saturation" }
+			}, "Sources": [
+				{ "Class": "FxCandyCane", "Parameters": {
+					"PeriodSeconds": { "Control": "Period" }
+				} }
+			] }
+		] }
+	],
+	"Events":[
+		{ "Name": "Start", "Actions": [
+			{ "Effect": "CandyWindows", "Action": "Start" },
+			{ "Effect": "CandyRoof", "Action": "Start" }
+		] }
+	],
+	"Timeline": [
+		{ "At": 0, "Event": "Start" }
+	]
+}

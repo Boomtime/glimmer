@@ -20,10 +20,10 @@
 
 	public enum WifiRSSI : int {
 		None = -200, // everything beyond Terrible or unknown, not likely to get a packet through if it exists at all
-		Terrible = -87, // (down to), will get some comms, but might be tragic
+		Terrible = -100, // (down to), will get some comms, but might be tragic
 		Weak = -75, // (down to), reliable only if it's consistent
-		Good = -57, // (down to), very solid and reliable, can handle variation
-		Excellent = -33, // down to -33, on top of the router, may have caught fire
+		Good = -67, // (down to), very solid and reliable, can handle variation
+		Excellent = -48, // down to -48, on top of the router, may have caught fire
 	}
 
 	public struct ButtonColour {

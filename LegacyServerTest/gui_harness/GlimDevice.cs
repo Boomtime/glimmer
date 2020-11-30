@@ -26,7 +26,7 @@
 
 		public IDeviceBinding Binding { get; set; }
 
-		//public event EventHandler Changed;
+		public event EventHandler UpdatedFromNetworkData;
 
 		public void UpdateFromNetworkData( IGlimDevice args ) {
 			if( 0 == BootCount || args.Uptime.TotalSeconds < Uptime.TotalSeconds ) {
@@ -39,7 +39,7 @@
 			CPU = args.CPU;
 			RSSI = args.RSSI;
 			dBm = args.dBm;
-			//Changed?.Invoke( this, EventArgs.Empty );
+			UpdatedFromNetworkData?.Invoke( this, EventArgs.Empty );
 		}
 
 		/// <summary>next packet transmission contains a ping reply</summary>

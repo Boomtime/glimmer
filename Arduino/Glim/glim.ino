@@ -224,7 +224,7 @@ void setup() {
 	Serial.begin( 115200 );
 	Serial.println( "" );
 	Serial.println( "*" );
-	Serial.println( "*  ShadowCreatures GlimSwarm v4.0 (" __DATE__ ")" );
+	Serial.println( "*  ShadowCreatures GlimSwarm v4.2 (" __DATE__ ")" );
 	Serial.println( "*" );
 	Serial.println( "" );
 	deadman_check();

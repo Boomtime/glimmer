@@ -13,6 +13,7 @@
 				ctlTrackBar.LargeChange = ( mVariable.Max - mVariable.Min ) / 10;
 				ctlTrackBar.Value = mVariable.Value;
 				ctlTrackBar.ValueChanged += CtlTrackBar_ValueChanged;
+				ctlEdit.Text = string.Format( "{0}", mVariable.Value );
 			}
 		}
 

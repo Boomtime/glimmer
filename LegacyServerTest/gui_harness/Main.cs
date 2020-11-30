@@ -1,13 +1,12 @@
 ﻿namespace ShadowCreatures.Glimmer {
 	using System;
-	using System.Net;
 	using System.Windows.Forms;
 	using System.Diagnostics;
 	using System.Threading;
-    using ShadowCreatures.Glimmer.Json;
-	using ShadowCreatures.Glimmer.Controls;
-    using System.Collections.Generic;
+	using ShadowCreatures.Glimmer.Json;
+	using System.Collections.Generic;
     using System.Drawing;
+    using System.ComponentModel;
 
     public partial class Main : Form {
 		const int AutoHuntInterval = 1000;
@@ -22,6 +21,7 @@
 			Christmas,
 			WindowTest,
 			Halloween2020,
+			Christmas2020,
 			Custom,
 		}
 
@@ -72,10 +72,6 @@
 			}
 		}
 
-		void XHuntClick( object sender, EventArgs e ) {
-			mEngine.PingTriggerNextFrame();
-		}
-
 		void XMainLoad( object sender, EventArgs e ) {
 			mEngine.Devices.FindOrCreate( "GlimSwarm-101" );
 			mEngine.Devices.FindOrCreate( "GlimSwarm-102" );
@@ -93,6 +89,7 @@
 			AddFunctionRadio( "christmas", OutputFunc.Christmas, new SequenceChristmas() );
 			AddFunctionRadio( "window test", OutputFunc.WindowTest, new SequenceTestWindow() );
 			AddFunctionRadio( "halloween 2020", OutputFunc.Halloween2020, new SequenceHalloween2020() );
+			AddFunctionRadio( "christmas 2020", OutputFunc.Christmas2020, new SequenceChristmas2020() );
 			AddFunctionRadio( "custom...", OutputFunc.Custom, new SequenceNull() );
 
 			cBtnLoad.Click += XBtnLoad_Click;
@@ -106,12 +103,14 @@
 		}
 
 		void XBtnSave_Click( object sender, EventArgs e ) {
+			// @todo
 		}
 
 		void XBtnLoad_Click( object sender, EventArgs e ) {
 			var dlg = new OpenFileDialog();
 			if( DialogResult.OK == dlg.ShowDialog() ) {
 				try {
+					LogAppend( "SequenceJson.Load: ", dlg.FileName );
 					using( var file = dlg.OpenFile() ) {
 						mSequenceList[OutputFunc.Custom] = SequenceJson.Load( file );
 						if( OutputFunc.Custom == mFunc ) {
@@ -124,13 +123,36 @@
 					if( ex is JsonException ) {
 						msg += string.Format( "\r\n\r\nAt:\r\n{0}", ( ex as JsonException ).JsonPath.FullPath );
 					}
+					LogAppend( Color.White, Color.DarkRed, "Error loading JSON: ", null, msg );
 					MessageBox.Show( msg, "Error loading JSON", MessageBoxButtons.OK, MessageBoxIcon.Error );
 				}
 			}
 		}
 
 		void XDeviceAdded( object sender, DeviceAddedEventArgs e ) {
-			UISafeCall( () => cDevices.Controls.Add( new GlimPanel { Device = e.Device } ) );
+			UISafeCall( () => {
+				LogAppend( "XDeviceAdded: ", e.Device.HostName );
+				var gp = new GlimPanel { Device = e.Device };
+				gp.Click += ( s, e2 ) => SelectGlimPanel( s as GlimPanel );
+				cDevices.Controls.Add( gp );
+			} );
+		}
+
+		void SelectGlimPanel( GlimPanel gp ) {
+			foreach( GlimPanel od in cDevices.Controls ) {
+				od.SelectedAppearance = false;
+			}
+			if( cDetailsGrid is INotifyPropertyChanged ) {
+				( cDetailsGrid as INotifyPropertyChanged ).PropertyChanged -= GlimDatGridPropertyChanged;
+			}
+			var p = gp.GetDataGridObject();
+			cDetailsGrid.SelectedObject = p;
+			p.PropertyChanged += GlimDatGridPropertyChanged;
+			gp.SelectedAppearance = true;
+		}
+
+		void GlimDatGridPropertyChanged( object sender, PropertyChangedEventArgs e ) {
+			UISafeCall( cDetailsGrid.Refresh );
 		}
 
 		void XHistogramChanged( object sender, EngineHistorgramUpdatedEventArgs e ) {
@@ -148,7 +170,7 @@
 					ThreadPool.QueueUserWorkItem( f => { try { Invoke( f as Action ); } catch { } }, func );
 				}
 				catch( Exception ex ) {
-					Debug.WriteLine( "*** EXCEPTION:" );
+					Debug.WriteLine( "*** EXCEPTION in UISafeCall:" );
 					Debug.WriteLine( ex.ToString() );
 				}
 			}
@@ -157,8 +179,14 @@
 			}
 		}
 
+		void LogAppend( params object[] seq ) {
+			ctlEventLog.AppendLine( seq );
+		}
+
 		void StartCurrentSequence() {
 			mCurrentProgram = mSequenceList[mFunc];
+			LogAppend( "StartCurrentSequence(): ", FontStyle.Bold, mFunc.ToString() );
+
 			mEngine.LoadSequence( mCurrentProgram );
 			// rebuild control panel
 			ctlSequenceControlsPanel.SuspendLayout();
@@ -175,30 +203,6 @@
 				mFunc = (OutputFunc)rb.Tag;
 				StartCurrentSequence();
 			}
-		}
-
-		class GlimDeviceNull : IGlimDevice {
-			public GlimDeviceNull() {
-				IPEndPoint = new IPEndPoint( IPAddress.Loopback, NetworkServer.DefaultPort );
-				HardwareType = HardwareType.GlimV2;
-				Uptime = TimeSpan.MaxValue;
-				CPU = 1.0f;
-				dBm = 0;
-				RSSI = WifiRSSI.Excellent;
-			}
-			public string HostName => String.Empty;
-			public IPEndPoint IPEndPoint { get; }
-			public HardwareType HardwareType { get; }
-			public TimeSpan Uptime { get; }
-			public float CPU { get; }
-			public int dBm { get; }
-			public WifiRSSI RSSI { get; }
-		}
-
-		private void XPartyDebugShotClick( object sender, EventArgs e ) {
-			var nd = new GlimDeviceNull();
-			mCurrentProgram.ButtonStateChanged( nd, ButtonStatus.Down );
-			mCurrentProgram.ButtonStateChanged( nd, ButtonStatus.Up );
 		}
 	}
 }

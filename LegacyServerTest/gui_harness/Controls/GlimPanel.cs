@@ -1,7 +1,10 @@
 ﻿namespace ShadowCreatures.Glimmer {
     using System;
     using System.Collections.Generic;
+    using System.ComponentModel;
     using System.Drawing;
+    using System.Linq.Expressions;
+    using System.Net;
     using System.Windows.Forms;
     using ShadowCreatures.Glimmer.Utility;
 	using LineCap = System.Drawing.Drawing2D.LineCap;
@@ -11,12 +14,17 @@
 
 		GlimDevice mDevice;
 		readonly Histogram mHistogram;
-		int lastBootCount = 1; // init to 1 will prevent the leading red spike
+		int mLastBootCount = 1; // init to 1 will prevent the leading red spike
 
 		public GlimPanel() {
 			InitializeComponent();
 			mHistogram = new Histogram( cName.Size );
 			cWifi.Image = BitmapForSignal( WifiRSSI.None );
+
+			panel1.Click += ( s, e ) => OnClick( e );
+			foreach( Control c in panel1.Controls ) {
+				c.Click += ( s, e ) => OnClick( e );
+			}
 		}
 
 		Bitmap BitmapForSignal( WifiRSSI signal ) {
@@ -31,22 +39,94 @@
 				mDevice = value;
 				cName.Text = value.HostName;
 				cName.Image = mHistogram.GenerateBitmap();
+				RefreshDeviceData();
+				value.UpdatedFromNetworkData += (s,e) => RefreshDeviceData();
 			}
+			get {
+				return mDevice;
+			}
+		}
+
+		public GlimDataGrid DataGrid { get; } = new GlimDataGrid();
+
+		void RefreshDeviceData() {
+			DataGrid.HostName = Device.HostName;
+			DataGrid.DisplayName = Device.Binding?.DisplayName;
+			DataGrid.IPEndPoint = Device.IPEndPoint;
+			DataGrid.HardwareType = Device.HardwareType;
+			DataGrid.Uptime = Device.Uptime;
+			DataGrid.BootCount = Device.BootCount;
+			DataGrid.CPU = Device.CPU.ToString( "0.000" );
+			DataGrid.WifiDBmV = Device.dBm;
+			DataGrid.ButtonEnabled = ButtonColour.Off != ( Device.Binding == null ? ButtonColour.Off : Device.Binding.ButtonColour );
 		}
 
 		public void UpdateStats() {
 			if( 0 < mDevice.BootCount ) {
-				if( lastBootCount == mDevice.BootCount ) {
+				if( mLastBootCount == mDevice.BootCount ) {
 					mHistogram.PushSample( mDevice.CPU );
 				}
 				else {
-					mHistogram.PushSample( 0 - mDevice.CPU );
-					lastBootCount = mDevice.BootCount;
+					mHistogram.PushSample( mDevice.CPU, Histogram.SampleStyle.Break );
+					mLastBootCount = mDevice.BootCount;
 				}
 				cName.Image = mHistogram.GenerateBitmap();
 				cWifi.Image = BitmapForSignal( mDevice.RSSI );
 			}
 		}
+
+		public bool SelectedAppearance {
+			get {
+				return cSelection.BackColor != SystemColors.Control;
+			}
+			set {
+				cSelection.BackColor = value ? SystemColors.Highlight : SystemColors.Control;
+			}
+		}
+
+		public GlimDataGrid GetDataGridObject() => DataGrid;
+	}
+
+	public class GlimDataGrid : INotifyPropertyChanged {
+		string mHostName;
+		TimeSpan mUptime;
+
+		void ChangeProperty<T>( Expression<Func<T>> property, ref T memberValue, T newValue ) {
+			if( !Object.Equals( memberValue, newValue ) ) {
+				memberValue = newValue;
+				string propertyName = ( (MemberExpression)property.Body ).Member.Name;
+				PropertyChanged?.Invoke( this, new PropertyChangedEventArgs( propertyName ) );
+			}
+		}
+
+		[ReadOnly( true )]
+		public string HostName {
+			get => mHostName;
+			set => ChangeProperty( () => HostName, ref mHostName, value );
+		}
+
+		[ReadOnly( true )]
+		public string DisplayName { get; set; }
+		[ReadOnly( true )]
+		public IPEndPoint IPEndPoint { get; set; }
+		[ReadOnly( true )]
+		public HardwareType HardwareType { get; set; }
+		[ReadOnly( true )]
+		public TimeSpan Uptime {
+			get => mUptime;
+			set => ChangeProperty( () => Uptime, ref mUptime, value );
+		}
+
+		[ReadOnly( true )]
+		public int BootCount { get; set; }
+		[ReadOnly( true )]
+		public string CPU { get; set; }
+		[ReadOnly( true )]
+		public int WifiDBmV { get; set; }
+		[ReadOnly( true )]
+		public bool ButtonEnabled { get; set; }
+
+		public event PropertyChangedEventHandler PropertyChanged;
 	}
 
 	class WifiBitmaps {

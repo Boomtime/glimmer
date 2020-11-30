@@ -8,7 +8,8 @@ using glim::colour_t;
 using glim::rgb_t;
 using namespace shadowcreatures::arduino;
 
-#define TIME_BETWEEN_ATTEMPTS_MS  10000
+#define LOOP_THINK_MS              5
+#define TIME_BETWEEN_ATTEMPTS_MS   8000
 
 namespace MSG { typedef enum { 
 	RGB = 1,
@@ -235,7 +236,7 @@ KERNEL_LOOP_DEFINE( network_client ) {
 		local::is_connected = false;
 	}
 
-	return 10;
+	return LOOP_THINK_MS;
 }
 
 
@@ -293,7 +294,7 @@ void initialize( void ) {
 	DEBUG_PRINT( "config and hostname set" );
 	DEBUG_SPRINT( "mac [%s]", WiFi.macAddress().c_str() );
 
-	KERNEL_LOOP_ATTACH( network_client, 20 );
+	KERNEL_LOOP_ATTACH( network_client, LOOP_THINK_MS );
 }
 
 void on_msg_rgb( msg_rgb_cb* cb ) {

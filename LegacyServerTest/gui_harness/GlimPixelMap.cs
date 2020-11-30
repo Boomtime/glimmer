@@ -132,4 +132,57 @@
 
 		public int PixelCount { get; }
 	}
+
+	class GlimPixelMapStrider : IGlimPixelMap {
+
+		readonly IGlimPixelMap mDst;
+		readonly int mPeriod;
+		readonly int mStride;
+
+		public GlimPixelMapStrider( IGlimPixelMap dst, int period, int gap ) {
+			if( period < 1 || gap < 1 ) {
+				throw new ArgumentOutOfRangeException( "Both period and gap must be 1 or higher" );
+			}
+
+			mDst = dst;
+			mPeriod = period;
+			mStride = period + gap;
+		}
+
+		public int PixelCount {
+			get {
+				int tally = 0;
+				int pos = 0;
+				int dstTotal = mDst.PixelCount;
+				while( pos + mPeriod < dstTotal ) {
+					tally += mPeriod;
+					pos += mStride;
+				}
+				if( pos < dstTotal ) {
+					tally += dstTotal - pos;
+				}
+				return tally;
+			}
+		}
+
+		IEnumerable<Color> Translate( IEnumerable<Color> src ) {
+			var srcenum = src.GetEnumerator();
+			int pos;
+			while( true ) {
+				for( pos = 0 ; pos < mPeriod ; pos++ ) {
+					if( !srcenum.MoveNext() ) {
+						yield break;
+					}
+					yield return srcenum.Current;
+				}
+				for( ; pos < mStride ; pos++ ) {
+					yield return Color.Transparent;
+				}
+			}
+		}
+
+		public void Write( IEnumerable<Color> src ) {
+			mDst.Write( Translate( src ) );
+		}
+	}
 }

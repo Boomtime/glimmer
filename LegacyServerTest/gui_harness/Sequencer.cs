@@ -127,18 +127,18 @@
 
 		protected SequenceControlDictionary Controls { get; } = new SequenceControlDictionary();
 
-		ControlVariableRatio AddStandardControl( string name, Action<double> cb ) {
-			var ctl = new ControlVariableRatio { Value = 1.0 };
+		ControlVariableRatio AddStandardControl( string name, Action<double> cb, double dv ) {
+			var ctl = new ControlVariableRatio { Value = dv };
 			ctl.ValueChanged += ( s, e ) => cb( ctl.Value );
 			Controls.Add( name, ctl );
 			return ctl;
 		}
 
-		protected ControlVariableRatio AddLuminanceControl( Action<double> cb ) {
-			return AddStandardControl( "Luminance", cb );
+		protected ControlVariableRatio AddLuminanceControl( Action<double> cb, double dv =1.0 ) {
+			return AddStandardControl( "Luminance", cb, dv );
 		}
-		protected ControlVariableRatio AddSaturationControl( Action<double> cb ) {
-			return AddStandardControl( "Saturation", cb );
+		protected ControlVariableRatio AddSaturationControl( Action<double> cb, double dv = 1.0 ) {
+			return AddStandardControl( "Saturation", cb, dv );
 		}
 
 		IControlDictionary ISequence.Controls => Controls;
@@ -307,9 +307,9 @@
 
 		void AddJsonDevice( JsonObject jdev ) {
 			var name = jdev["Name"].AsString();
-			var hostname = jdev["Hostname"].AsString();
+			var hostname = jdev["HostName"].AsString();
 			var pixelcount = jdev["PixelCount"].AsNumber();
-			Debug.Print( "got device [{0}] hostname [{1}] pixelcount [{2}]", name, hostname, pixelcount );
+			Debug.Print( "got device [{0}] HostName [{1}] PixelCount [{2}]", name, hostname, pixelcount );
 			var dev = new SequenceDeviceBasic( name, hostname, (int)pixelcount ); // @todo: do we care about silently ignoring decimals in the JSON?
 			Devices.Add( name, dev );
 			Program.AddDevice( dev );
@@ -439,7 +439,12 @@
 					if( jctl.TryGetValue( "Step", out JsonValue jstep ) ) {
 						step = (int)jstep.AsNumber();
 					}
-					ctl = new ControlVariableInteger( min, max, step );
+					if( jctl.TryGetValue( "Default", out JsonValue jdef ) ) {
+						ctl = new ControlVariableInteger( min, max, step ) { Value = (int)jdef.AsNumber() };
+					}
+					else {
+						ctl = new ControlVariableInteger( min, max, step );
+					}
 					break;
 				case ControlType.Double:
 					double dmin = double.MinValue;

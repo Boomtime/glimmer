@@ -159,8 +159,8 @@
 		/// <summary>locates an optional property, returns null if the key does not exist</summary>
 		/// <param name="key">name of the property to extract</param>
 		/// <param name="allowNullInJson">true (default) to permit JSON to explicitly specify null for the value, false to throw if null is given in JSON</param>
-		/// <returns>property value as a string</returns>
-		/// <exception cref="JsonExceptionOptionalKeyWrongType">if property is given but is not a string, or property is given as null but allowNull is false</exception>
+		/// <returns>property value as a string, null if the property does not exist</returns>
+		/// <exception cref="JsonKeyWrongTypeException">if property is given but is not a string, or property is given as null but allowNull is false</exception>
 		public string GetOptionalPropertyAsStringOrNull( string key, bool allowNullInJson = true ) {
 			if( !TryGetValue( key, out JsonValue v ) ) {
 				return null;
